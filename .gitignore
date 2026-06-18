@@ -1,0 +1,51 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor and IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Dependency folders
+node_modules/
+vendor/
+
+# Build and cache output
+dist/
+build/
+out/
+coverage/
+.cache/
+.tmp/
+tmp/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# .NET output
+bin/
+obj/
+
+# Java output
+target/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
