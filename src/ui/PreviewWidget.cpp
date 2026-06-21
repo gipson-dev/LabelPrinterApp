@@ -106,6 +106,27 @@ void PreviewWidget::Paint(HWND window)
     SetBkMode(dc, TRANSPARENT);
     SetTextColor(dc, RGB(25, 28, 33));
 
+    HPEN gridPen = CreatePen(PS_DOT, 1, RGB(218, 224, 232));
+    HPEN oldPen = reinterpret_cast<HPEN>(SelectObject(dc, gridPen));
+    for (int dotX = 50; dotX < currentTemplate.labelWidthDots; dotX += 50)
+    {
+        int x = ScaleX(dotX, labelRect);
+        MoveToEx(dc, x, labelRect.top, nullptr);
+        LineTo(dc, x, labelRect.bottom);
+    }
+    for (int dotY = 50; dotY < currentTemplate.labelHeightDots; dotY += 50)
+    {
+        int y = ScaleY(dotY, labelRect);
+        MoveToEx(dc, labelRect.left, y, nullptr);
+        LineTo(dc, labelRect.right, y);
+    }
+    SelectObject(dc, oldPen);
+    DeleteObject(gridPen);
+
+    std::wstring dimensions = std::to_wstring(currentTemplate.labelWidthDots) + L" x " + std::to_wstring(currentTemplate.labelHeightDots) + L" dots";
+    RECT dimensionsRect = { labelRect.left, labelRect.top - 22, labelRect.right, labelRect.top - 4 };
+    DrawTextW(dc, dimensions.c_str(), -1, &dimensionsRect, DT_RIGHT | DT_SINGLELINE | DT_NOPREFIX);
+
     for (const LabelElement& element : currentTemplate.elements)
     {
         int x = ScaleX(element.x, labelRect);
@@ -119,16 +140,35 @@ void PreviewWidget::Paint(HWND window)
             RECT barcodeRect = { x, y, x + scaledWidth, y + std::max(24, scaledHeight) };
 
             HBRUSH barcodeBrush = CreateSolidBrush(RGB(30, 34, 40));
-            for (int barX = barcodeRect.left; barX < barcodeRect.right; barX += 6)
+            int moduleWidth = std::max(2, element.barcodeModuleWidth * 2);
+            for (int barX = barcodeRect.left; barX < barcodeRect.right; barX += moduleWidth * 3)
             {
-                RECT bar = { barX, barcodeRect.top, barX + 3, barcodeRect.bottom };
+                RECT bar = { barX, barcodeRect.top, barX + moduleWidth, barcodeRect.bottom };
                 FillRect(dc, &bar, barcodeBrush);
             }
             DeleteObject(barcodeBrush);
 
+            HPEN outlinePen = CreatePen(PS_SOLID, 1, RGB(70, 130, 180));
+            HPEN previousPen = reinterpret_cast<HPEN>(SelectObject(dc, outlinePen));
+            SelectObject(dc, GetStockObject(NULL_BRUSH));
+            Rectangle(dc, barcodeRect.left, barcodeRect.top, barcodeRect.right, barcodeRect.bottom);
+            SelectObject(dc, previousPen);
+            DeleteObject(outlinePen);
+
             std::wstring text = ToWide(element.text);
+            if (element.barcodeSymbology == BarcodeSymbology::Code39)
+            {
+                text = L"Code39: " + text;
+            }
+            else
+            {
+                text = L"Code128: " + text;
+            }
             RECT textRect = { barcodeRect.left, barcodeRect.bottom + 4, barcodeRect.right + 80, barcodeRect.bottom + 24 };
-            DrawTextW(dc, text.c_str(), -1, &textRect, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+            if (element.barcodeHumanReadable)
+            {
+                DrawTextW(dc, text.c_str(), -1, &textRect, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+            }
         }
         else
         {
@@ -155,6 +195,13 @@ void PreviewWidget::Paint(HWND window)
             DrawTextW(dc, text.c_str(), -1, &textRect, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
             SelectObject(dc, oldFont);
             DeleteObject(font);
+
+            HPEN outlinePen = CreatePen(PS_DOT, 1, RGB(120, 148, 180));
+            HPEN previousPen = reinterpret_cast<HPEN>(SelectObject(dc, outlinePen));
+            SelectObject(dc, GetStockObject(NULL_BRUSH));
+            Rectangle(dc, textRect.left, textRect.top, textRect.right, textRect.bottom);
+            SelectObject(dc, previousPen);
+            DeleteObject(outlinePen);
         }
     }
 

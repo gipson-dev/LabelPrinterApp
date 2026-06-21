@@ -1,13 +1,41 @@
 #pragma once
 
+#include <iomanip>
 #include <sstream>
 #include <string>
+
 #include "LabelTemplate.h"
+#include "LabelValidation.h"
 #include "PrinterSettings.h"
+
+struct ZplGenerationResult
+{
+    bool success = false;
+    std::string zpl;
+    std::string errorMessage;
+};
 
 class ZplGenerator
 {
 public:
+    static ZplGenerationResult tryGenerate(
+        const LabelTemplate& labelTemplate,
+        const PrinterSettings& settings
+    )
+    {
+        ZplGenerationResult result;
+        LabelValidationResult validation = LabelValidation::ValidateTemplate(labelTemplate);
+        if (!validation.isValid())
+        {
+            result.errorMessage = validation.issues.front().message;
+            return result;
+        }
+
+        result.zpl = generate(labelTemplate, settings);
+        result.success = true;
+        return result;
+    }
+
     static std::string generate(
         const LabelTemplate& labelTemplate,
         const PrinterSettings& settings
@@ -16,6 +44,7 @@ public:
         std::ostringstream zpl;
 
         zpl << "^XA\n";
+        zpl << "^CI28\n";
 
         const int widthDots = labelTemplate.labelWidthDots > 0
             ? labelTemplate.labelWidthDots
@@ -36,24 +65,33 @@ public:
 
             if (element.type == LabelElementType::Barcode)
             {
-                zpl << "^BY2\n";
-                zpl << "^BCN," << element.barcodeHeight << ",Y,N,N\n";
-                zpl << "^FD" << sanitizeText(element.text) << "^FS\n";
+                zpl << "^BY" << element.barcodeModuleWidth << "\n";
+                if (element.barcodeSymbology == BarcodeSymbology::Code39)
+                {
+                    zpl << "^B3N,N," << element.barcodeHeight << ","
+                        << (element.barcodeHumanReadable ? "Y" : "N") << ",N\n";
+                }
+                else
+                {
+                    zpl << "^BCN," << element.barcodeHeight << ","
+                        << (element.barcodeHumanReadable ? "Y" : "N") << ",N,N\n";
+                }
+                zpl << "^FH\\^FD" << escapeFieldData(element.text) << "^FS\n";
             }
             else if (element.bold)
             {
                 // Fake bold by printing the same text twice with slight offset
                 zpl << "^A0N," << element.fontHeight << "," << element.fontWidth << "\n";
-                zpl << "^FD" << sanitizeText(element.text) << "^FS\n";
+                zpl << "^FH\\^FD" << escapeFieldData(element.text) << "^FS\n";
 
                 zpl << "^FO" << element.x + 2 << "," << element.y << "\n";
                 zpl << "^A0N," << element.fontHeight << "," << element.fontWidth << "\n";
-                zpl << "^FD" << sanitizeText(element.text) << "^FS\n";
+                zpl << "^FH\\^FD" << escapeFieldData(element.text) << "^FS\n";
             }
             else
             {
                 zpl << "^A0N," << element.fontHeight << "," << element.fontWidth << "\n";
-                zpl << "^FD" << sanitizeText(element.text) << "^FS\n";
+                zpl << "^FH\\^FD" << escapeFieldData(element.text) << "^FS\n";
             }
         }
 
@@ -63,23 +101,30 @@ public:
     }
 
 private:
-    static std::string sanitizeText(const std::string& input)
+    static std::string escapeFieldData(const std::string& input)
     {
         std::string output;
 
-        for (char c : input)
+        for (unsigned char c : input)
         {
-            // Avoid breaking ZPL field data
-            if (c == '^' || c == '~')
+            if (c == '\\' || c == '^' || c == '~' || c < 32)
             {
-                output += ' ';
+                output += '\\';
+                output += hexByte(c);
             }
             else
             {
-                output += c;
+                output += static_cast<char>(c);
             }
         }
 
         return output;
+    }
+
+    static std::string hexByte(unsigned char value)
+    {
+        std::ostringstream hex;
+        hex << std::uppercase << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(value);
+        return hex.str();
     }
 }; 

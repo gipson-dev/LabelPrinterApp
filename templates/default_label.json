@@ -6,38 +6,49 @@
     {
       "name": "Item Number",
       "type": "Text",
+      "fieldKey": "item_number",
       "text": "ITEM: 123456",
       "x": 30,
       "y": 30,
       "fontHeight": 35,
       "fontWidth": 35,
-      "bold": true
+      "bold": true,
+      "editable": true
     },
     {
       "name": "Part Name",
       "type": "Text",
+      "fieldKey": "part_name",
       "text": "PART A-100",
       "x": 30,
       "y": 80,
       "fontHeight": 30,
-      "fontWidth": 30
+      "fontWidth": 30,
+      "editable": true
     },
     {
       "name": "Quantity",
       "type": "Text",
+      "fieldKey": "quantity",
       "text": "QTY: 25",
       "x": 30,
       "y": 125,
       "fontHeight": 30,
-      "fontWidth": 30
+      "fontWidth": 30,
+      "editable": true
     },
     {
       "name": "Barcode",
       "type": "Barcode",
+      "fieldKey": "barcode",
       "text": "123456",
       "x": 30,
       "y": 170,
-      "barcodeHeight": 50
+      "barcodeHeight": 50,
+      "barcodeModuleWidth": 2,
+      "barcodeSymbology": "Code128",
+      "barcodeHumanReadable": true,
+      "editable": true
     }
   ]
 }
