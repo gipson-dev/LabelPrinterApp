@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Windows",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/ui"
+            ],
+            "defines": [
+                "WIN32_LEAN_AND_MEAN",
+                "NOMINMAX"
+            ],
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}
