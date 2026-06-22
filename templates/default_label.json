@@ -2,6 +2,11 @@
   "name": "Default Label",
   "labelWidthDots": 400,
   "labelHeightDots": 240,
+  "marginLeftDots": 0,
+  "marginTopDots": 0,
+  "gapDots": 24,
+  "mediaTrackingMode": "Gap",
+  "orientation": "Portrait",
   "elements": [
     {
       "name": "Item Number",
@@ -12,7 +17,18 @@
       "y": 30,
       "fontHeight": 35,
       "fontWidth": 35,
+      "fontName": "0",
+      "boxWidth": 320,
+      "maxLines": 1,
+      "rotation": "Normal",
+      "alignment": "Left",
       "bold": true,
+      "italic": false,
+      "underline": false,
+      "multiline": false,
+      "variable": true,
+      "autoFit": false,
+      "wrap": false,
       "editable": true
     },
     {
@@ -24,6 +40,18 @@
       "y": 80,
       "fontHeight": 30,
       "fontWidth": 30,
+      "fontName": "0",
+      "boxWidth": 320,
+      "maxLines": 1,
+      "rotation": "Normal",
+      "alignment": "Left",
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "multiline": false,
+      "variable": true,
+      "autoFit": false,
+      "wrap": false,
       "editable": true
     },
     {
@@ -35,6 +63,18 @@
       "y": 125,
       "fontHeight": 30,
       "fontWidth": 30,
+      "fontName": "0",
+      "boxWidth": 320,
+      "maxLines": 1,
+      "rotation": "Normal",
+      "alignment": "Left",
+      "bold": false,
+      "italic": false,
+      "underline": false,
+      "multiline": false,
+      "variable": true,
+      "autoFit": false,
+      "wrap": false,
       "editable": true
     },
     {
@@ -48,6 +88,7 @@
       "barcodeModuleWidth": 2,
       "barcodeSymbology": "Code128",
       "barcodeHumanReadable": true,
+      "rotation": "Normal",
       "editable": true
     }
   ]

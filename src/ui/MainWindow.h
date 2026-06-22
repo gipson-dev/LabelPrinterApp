@@ -34,6 +34,11 @@ private:
         HWND yEdit = nullptr;
         HWND sizeEdit = nullptr;
         HWND optionCheck = nullptr;
+        HWND italicCheck = nullptr;
+        HWND underlineCheck = nullptr;
+        HWND wrapCheck = nullptr;
+        HWND rotationCombo = nullptr;
+        HWND alignmentCombo = nullptr;
         HWND symbologyCombo = nullptr;
     };
 
@@ -48,8 +53,13 @@ private:
     static constexpr int CopiesEditId = 1103;
     static constexpr int LabelWidthEditId = 1104;
     static constexpr int LabelHeightEditId = 1105;
+    static constexpr int MarginLeftEditId = 1106;
+    static constexpr int MarginTopEditId = 1107;
+    static constexpr int GapEditId = 1108;
+    static constexpr int MediaModeComboId = 1109;
+    static constexpr int OrientationComboId = 1110;
     static constexpr int FirstInputId = 2000;
-    static constexpr int InputsPerElement = 10;
+    static constexpr int InputsPerElement = 16;
 
     static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -63,6 +73,7 @@ private:
     void DestroyElementInputs();
     void SyncInputsToTemplate();
     void SyncSettingsFromControls();
+    void ApplyPreviewPosition(std::size_t elementIndex, int x, int y);
     void PrintTemplate();
     void SaveTemplate();
     void NewTemplate();
@@ -100,6 +111,16 @@ private:
     HWND labelWidthEdit = nullptr;
     HWND labelHeightLabel = nullptr;
     HWND labelHeightEdit = nullptr;
+    HWND marginLeftLabel = nullptr;
+    HWND marginLeftEdit = nullptr;
+    HWND marginTopLabel = nullptr;
+    HWND marginTopEdit = nullptr;
+    HWND gapLabel = nullptr;
+    HWND gapEdit = nullptr;
+    HWND mediaModeLabel = nullptr;
+    HWND mediaModeCombo = nullptr;
+    HWND orientationLabel = nullptr;
+    HWND orientationCombo = nullptr;
     HWND historyLabel = nullptr;
     HWND historyList = nullptr;
     HWND statusLabel = nullptr;

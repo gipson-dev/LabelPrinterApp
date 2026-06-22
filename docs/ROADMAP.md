@@ -18,16 +18,15 @@ This roadmap follows the twenty-phase plan for building the Zebra label printer 
 | 12 | Error handling | Complete for foundation | Save/print paths validate first, show focused messages, and update a status line. |
 | 13 | Print history | Complete for foundation | Records recent in-memory print attempts with template, printer, copy count, result, and message. |
 | 14 | Batch printing | Complete for foundation | Supports repeat-count batch printing for multiple copies of the current label. |
-| 15 | Advanced formatting | Not started | Add alignment, rotation, font choices, wrapping, and conditional fields. |
-| 16 | Drag-and-drop designer | Not started | Add interactive element selection and movement in preview/designer. |
-| 17 | Packaging as EXE | Started | Manual EXE build documented. Needs repeatable packaging/release artifact workflow. |
+| 15 | Advanced formatting | Complete for foundation | Adds label margins, gap/media sensing, orientation, font metadata, bold, italic, underline, rotation, alignment, wrapping, multi-line text, fixed/variable metadata, and auto-fit metadata. |
+| 16 | Drag-and-drop designer | Complete for foundation | Preview supports click-and-drag movement for elements and syncs updated X/Y fields back into the editor. |
+| 17 | Packaging as EXE | Complete for foundation | Adds `scripts/package-release.ps1` to build/test Release and copy the EXE, default template, README, and license into `dist\\LabelPrinterApp`. |
 | 18 | GitHub and releases | Started | GitHub templates and Windows build workflow exist. Needs release workflow. |
 | 19 | Testing and calibration | Started | Initial portable tests added. Needs printer calibration and UI/manual test checklist. |
 | 20 | Final polish | Not started | Fit-and-finish after core workflows settle. |
 
 ## Near-Term Order
 
-1. Continue with Phase 15 by adding alignment, rotation, and richer formatting metadata.
-2. Continue with Phase 16 by adding interactive selection and drag movement in the preview.
-3. Continue with Phase 17 by packaging a repeatable release EXE artifact.
-4. Continue with Phase 19 by adding printer calibration notes and manual test checklists.
+1. Continue with Phase 18 by adding a GitHub release workflow for packaged EXE artifacts.
+2. Continue with Phase 19 by adding printer calibration notes and manual test checklists.
+3. Continue with Phase 20 by tightening UI layout, labels, and final defaults.

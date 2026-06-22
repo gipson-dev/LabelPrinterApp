@@ -2,6 +2,9 @@
 
 ## 2026-06-21
 
+- Added Phase 15 advanced formatting foundations: margins, media gap, gap/black-mark/continuous sensing, orientation, font name, bold, italic, underline, rotation, alignment, wrapping, multi-line text, variable/fixed text metadata, and auto-fit metadata.
+- Added Phase 16 drag-and-drop preview movement for label elements and fixed preview text vertical positioning.
+- Added Phase 17 packaging support with `scripts/package-release.ps1` for a release EXE bundle under `dist\LabelPrinterApp`.
 - Added editable label controls for element values, X/Y position, text size, barcode height, bold text, barcode human-readable text, and barcode symbology.
 - Expanded barcode support with Code 128 and Code 39 options, module width metadata, template storage, validation, ZPL output, and tests.
 - Improved the preview with a dot grid, label dimensions, element bounds, barcode type labels, and barcode module-width approximation.

@@ -58,9 +58,9 @@ Run the app and select the installed Windows printer from the printer list:
 - Printer selection from installed Windows printers
 - Template actions for creating a new template, reloading the saved template, and saving edits
 - Dynamic element inputs generated from `templates/default_label.json`
-- Editable value, X/Y position, text size, barcode height, bold, human-readable barcode text, and barcode symbology fields
-- Printer setting inputs for darkness, print speed, label width, label height, and copy count
-- Live label preview with a dot grid, element outlines, text, and barcode approximation
+- Editable value, X/Y position, text size, bold, italic, underline, wrap, rotation, alignment, barcode height, human-readable barcode text, and barcode symbology fields
+- Printer and media setting inputs for darkness, print speed, label width, label height, margins, media gap, sensing mode, orientation, and copy count
+- Live label preview with a dot grid, element outlines, text, barcode approximation, and drag-to-move positioning
 - Validation before saving or printing
 - Print button that sends generated ZPL batches to the selected printer
 - Save Template button that writes edited values back to JSON
@@ -77,7 +77,18 @@ The in-code fallback label lives in `include/LabelPrinterApp/TemplateStorage.h`.
 
 Each element also has a `fieldKey` for stable storage/batch-print mapping and an `editable` flag for UI behavior.
 Barcode elements support `Code128` and `Code39`, `barcodeModuleWidth`, `barcodeHeight`, and `barcodeHumanReadable`.
+Text elements support font name, font size, bold, italic, underline, rotation, alignment, multi-line wrapping, variable/fixed field metadata, and auto-fit metadata.
 Invalid template files fall back to the in-code default, and invalid templates are not saved.
+
+## Package
+
+Build a release EXE bundle with:
+
+```powershell
+.\scripts\package-release.ps1
+```
+
+The package is written to `dist\LabelPrinterApp` with the EXE, default template, README, and license.
 
 ## Notes
 

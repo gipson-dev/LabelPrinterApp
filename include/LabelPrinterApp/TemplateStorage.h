@@ -51,6 +51,11 @@ public:
         file << "  \"name\": \"" << EscapeJson(label.name) << "\",\n";
         file << "  \"labelWidthDots\": " << label.labelWidthDots << ",\n";
         file << "  \"labelHeightDots\": " << label.labelHeightDots << ",\n";
+        file << "  \"marginLeftDots\": " << label.marginLeftDots << ",\n";
+        file << "  \"marginTopDots\": " << label.marginTopDots << ",\n";
+        file << "  \"gapDots\": " << label.gapDots << ",\n";
+        file << "  \"mediaTrackingMode\": \"" << ToString(label.mediaTrackingMode) << "\",\n";
+        file << "  \"orientation\": \"" << ToString(label.orientation) << "\",\n";
         file << "  \"elements\": [\n";
 
         for (std::size_t i = 0; i < label.elements.size(); ++i)
@@ -71,6 +76,7 @@ public:
                 file << "      \"barcodeModuleWidth\": " << element.barcodeModuleWidth << ",\n";
                 file << "      \"barcodeSymbology\": \"" << ToString(element.barcodeSymbology) << "\",\n";
                 file << "      \"barcodeHumanReadable\": " << (element.barcodeHumanReadable ? "true" : "false") << ",\n";
+                file << "      \"rotation\": \"" << ToString(element.rotation) << "\",\n";
                 file << "      \"editable\": " << (element.editable ? "true" : "false") << "\n";
             }
             else
@@ -78,7 +84,18 @@ public:
                 file << ",\n";
                 file << "      \"fontHeight\": " << element.fontHeight << ",\n";
                 file << "      \"fontWidth\": " << element.fontWidth << ",\n";
+                file << "      \"fontName\": \"" << EscapeJson(element.fontName) << "\",\n";
+                file << "      \"boxWidth\": " << element.boxWidth << ",\n";
+                file << "      \"maxLines\": " << element.maxLines << ",\n";
+                file << "      \"rotation\": \"" << ToString(element.rotation) << "\",\n";
+                file << "      \"alignment\": \"" << ToString(element.alignment) << "\",\n";
                 file << "      \"bold\": " << (element.bold ? "true" : "false") << ",\n";
+                file << "      \"italic\": " << (element.italic ? "true" : "false") << ",\n";
+                file << "      \"underline\": " << (element.underline ? "true" : "false") << ",\n";
+                file << "      \"multiline\": " << (element.multiline ? "true" : "false") << ",\n";
+                file << "      \"variable\": " << (element.variable ? "true" : "false") << ",\n";
+                file << "      \"autoFit\": " << (element.autoFit ? "true" : "false") << ",\n";
+                file << "      \"wrap\": " << (element.wrap ? "true" : "false") << ",\n";
                 file << "      \"editable\": " << (element.editable ? "true" : "false") << "\n";
             }
 
@@ -96,6 +113,9 @@ public:
         label.name = "Default Label";
         label.labelWidthDots = 400;
         label.labelHeightDots = 240;
+        label.marginLeftDots = 0;
+        label.marginTopDots = 0;
+        label.gapDots = 24;
 
         label.addElement(LabelElement::Text("Item Number", "ITEM: 123456", 30, 30, 35, 35, true));
         label.addElement(LabelElement::Text("Part Name", "PART A-100", 30, 80, 30, 30));
@@ -463,6 +483,11 @@ private:
         label.name = GetString(root, "name", label.name);
         label.labelWidthDots = GetInt(root, "labelWidthDots", label.labelWidthDots);
         label.labelHeightDots = GetInt(root, "labelHeightDots", label.labelHeightDots);
+        label.marginLeftDots = GetInt(root, "marginLeftDots", label.marginLeftDots);
+        label.marginTopDots = GetInt(root, "marginTopDots", label.marginTopDots);
+        label.gapDots = GetInt(root, "gapDots", label.gapDots);
+        label.mediaTrackingMode = MediaTrackingModeFromString(GetString(root, "mediaTrackingMode", "Gap"));
+        label.orientation = LabelOrientationFromString(GetString(root, "orientation", "Portrait"));
 
         const JsonValue* elements = root.find("elements");
         if (!elements || elements->type != JsonType::Array)
@@ -491,6 +516,7 @@ private:
                 element.barcodeModuleWidth = GetInt(object, "barcodeModuleWidth", 2);
                 element.barcodeSymbology = BarcodeSymbologyFromString(GetString(object, "barcodeSymbology", "Code128"));
                 element.barcodeHumanReadable = GetBool(object, "barcodeHumanReadable", true);
+                element.rotation = FieldRotationFromString(GetString(object, "rotation", "Normal"));
                 element.editable = GetBool(object, "editable", true);
                 label.addElement(element);
             }
@@ -505,6 +531,17 @@ private:
                     GetInt(object, "fontWidth", 30),
                     GetBool(object, "bold", false));
                 element.fieldKey = fieldKey;
+                element.fontName = GetString(object, "fontName", "0");
+                element.boxWidth = GetInt(object, "boxWidth", 260);
+                element.maxLines = GetInt(object, "maxLines", 1);
+                element.rotation = FieldRotationFromString(GetString(object, "rotation", "Normal"));
+                element.alignment = TextAlignmentFromString(GetString(object, "alignment", "Left"));
+                element.italic = GetBool(object, "italic", false);
+                element.underline = GetBool(object, "underline", false);
+                element.multiline = GetBool(object, "multiline", false);
+                element.variable = GetBool(object, "variable", true);
+                element.autoFit = GetBool(object, "autoFit", false);
+                element.wrap = GetBool(object, "wrap", false);
                 element.editable = GetBool(object, "editable", true);
                 label.addElement(element);
             }

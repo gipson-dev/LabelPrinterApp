@@ -104,6 +104,13 @@ LRESULT CALLBACK MainWindow::WindowProc(HWND window, UINT message, WPARAM wParam
         mainWindow->LayoutControls(LOWORD(lParam), HIWORD(lParam));
         return 0;
 
+    case PreviewWidget::PositionChangedMessage:
+        mainWindow->ApplyPreviewPosition(
+            static_cast<std::size_t>(wParam),
+            LOWORD(lParam),
+            HIWORD(lParam));
+        return 0;
+
     case WM_COMMAND:
         if (LOWORD(wParam) == PrintButtonId)
         {
@@ -131,7 +138,12 @@ LRESULT CALLBACK MainWindow::WindowProc(HWND window, UINT message, WPARAM wParam
             mainWindow->UpdateStatus(L"Printer list refreshed.");
             return 0;
         }
-        if (LOWORD(wParam) >= DarknessEditId && LOWORD(wParam) <= LabelHeightEditId && HIWORD(wParam) == EN_CHANGE)
+        if (LOWORD(wParam) >= DarknessEditId && LOWORD(wParam) <= GapEditId && HIWORD(wParam) == EN_CHANGE)
+        {
+            mainWindow->SyncInputsToTemplate();
+            return 0;
+        }
+        if ((LOWORD(wParam) == MediaModeComboId || LOWORD(wParam) == OrientationComboId) && HIWORD(wParam) == CBN_SELCHANGE)
         {
             mainWindow->SyncInputsToTemplate();
             return 0;
@@ -177,6 +189,21 @@ void MainWindow::CreateControls()
     labelWidthEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_NUMBER, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(LabelWidthEditId)), nullptr, nullptr);
     labelHeightLabel = CreateWindowExW(0, L"STATIC", L"Height", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
     labelHeightEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_NUMBER, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(LabelHeightEditId)), nullptr, nullptr);
+    marginLeftLabel = CreateWindowExW(0, L"STATIC", L"Left", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
+    marginLeftEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_NUMBER, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(MarginLeftEditId)), nullptr, nullptr);
+    marginTopLabel = CreateWindowExW(0, L"STATIC", L"Top", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
+    marginTopEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_NUMBER, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(MarginTopEditId)), nullptr, nullptr);
+    gapLabel = CreateWindowExW(0, L"STATIC", L"Gap", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
+    gapEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", nullptr, WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_NUMBER, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(GapEditId)), nullptr, nullptr);
+    mediaModeLabel = CreateWindowExW(0, L"STATIC", L"Media", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
+    mediaModeCombo = CreateWindowExW(0, L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(MediaModeComboId)), nullptr, nullptr);
+    SendMessageW(mediaModeCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Gap"));
+    SendMessageW(mediaModeCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"BlackMark"));
+    SendMessageW(mediaModeCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Continuous"));
+    orientationLabel = CreateWindowExW(0, L"STATIC", L"Orient", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
+    orientationCombo = CreateWindowExW(0, L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(OrientationComboId)), nullptr, nullptr);
+    SendMessageW(orientationCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Portrait"));
+    SendMessageW(orientationCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Landscape"));
     historyLabel = CreateWindowExW(0, L"STATIC", L"Print History", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
     historyList = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", nullptr, WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOINTEGRALHEIGHT, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
     statusLabel = CreateWindowExW(0, L"STATIC", L"Ready", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, windowHandle, nullptr, nullptr, nullptr);
@@ -185,6 +212,11 @@ void MainWindow::CreateControls()
     SetWindowIntValue(speedEdit, printerSettings.printSpeed);
     SetWindowIntValue(labelWidthEdit, labelTemplate.labelWidthDots);
     SetWindowIntValue(labelHeightEdit, labelTemplate.labelHeightDots);
+    SetWindowIntValue(marginLeftEdit, labelTemplate.marginLeftDots);
+    SetWindowIntValue(marginTopEdit, labelTemplate.marginTopDots);
+    SetWindowIntValue(gapEdit, labelTemplate.gapDots);
+    SendMessageW(mediaModeCombo, CB_SETCURSEL, labelTemplate.mediaTrackingMode == MediaTrackingMode::BlackMark ? 1 : (labelTemplate.mediaTrackingMode == MediaTrackingMode::Continuous ? 2 : 0), 0);
+    SendMessageW(orientationCombo, CB_SETCURSEL, labelTemplate.orientation == LabelOrientation::Landscape ? 1 : 0, 0);
 
     previewHandle = previewWidget.Create(windowHandle, labelTemplate);
 
@@ -200,7 +232,7 @@ void MainWindow::LayoutControls(int width, int height)
 {
     const int margin = 18;
     const int labelWidth = 100;
-    const int leftWidth = 740;
+    const int leftWidth = 900;
     const int rowHeight = 28;
     const int rowGap = 10;
     const int previewX = leftWidth + margin;
@@ -227,18 +259,35 @@ void MainWindow::LayoutControls(int width, int height)
     MoveWindow(labelHeightLabel, margin + 462, settingsY + 4, 58, rowHeight, TRUE);
     MoveWindow(labelHeightEdit, margin + 524, settingsY, 62, rowHeight, TRUE);
 
-    int y = settingsY + rowHeight + 18;
+    int mediaY = settingsY + rowHeight + 8;
+    MoveWindow(marginLeftLabel, margin, mediaY + 4, 40, rowHeight, TRUE);
+    MoveWindow(marginLeftEdit, margin + 48, mediaY, 46, rowHeight, TRUE);
+    MoveWindow(marginTopLabel, margin + 104, mediaY + 4, 36, rowHeight, TRUE);
+    MoveWindow(marginTopEdit, margin + 146, mediaY, 46, rowHeight, TRUE);
+    MoveWindow(gapLabel, margin + 202, mediaY + 4, 36, rowHeight, TRUE);
+    MoveWindow(gapEdit, margin + 242, mediaY, 46, rowHeight, TRUE);
+    MoveWindow(mediaModeLabel, margin + 300, mediaY + 4, 52, rowHeight, TRUE);
+    MoveWindow(mediaModeCombo, margin + 356, mediaY, 102, 120, TRUE);
+    MoveWindow(orientationLabel, margin + 470, mediaY + 4, 54, rowHeight, TRUE);
+    MoveWindow(orientationCombo, margin + 528, mediaY, 100, 100, TRUE);
+
+    int y = mediaY + rowHeight + 18;
     for (const ElementInput& input : elementInputs)
     {
         MoveWindow(input.labelHandle, margin, y + 4, labelWidth, rowHeight, TRUE);
-        MoveWindow(input.valueEdit, margin + labelWidth, y, 190, rowHeight, TRUE);
-        MoveWindow(input.xEdit, margin + labelWidth + 198, y, 48, rowHeight, TRUE);
-        MoveWindow(input.yEdit, margin + labelWidth + 252, y, 48, rowHeight, TRUE);
-        MoveWindow(input.sizeEdit, margin + labelWidth + 306, y, 54, rowHeight, TRUE);
-        MoveWindow(input.optionCheck, margin + labelWidth + 368, y + 2, 80, rowHeight, TRUE);
+        MoveWindow(input.valueEdit, margin + labelWidth, y, 160, rowHeight, TRUE);
+        MoveWindow(input.xEdit, margin + labelWidth + 168, y, 44, rowHeight, TRUE);
+        MoveWindow(input.yEdit, margin + labelWidth + 218, y, 44, rowHeight, TRUE);
+        MoveWindow(input.sizeEdit, margin + labelWidth + 268, y, 48, rowHeight, TRUE);
+        MoveWindow(input.optionCheck, margin + labelWidth + 322, y + 2, 58, rowHeight, TRUE);
+        if (input.italicCheck) MoveWindow(input.italicCheck, margin + labelWidth + 384, y + 2, 46, rowHeight, TRUE);
+        if (input.underlineCheck) MoveWindow(input.underlineCheck, margin + labelWidth + 434, y + 2, 46, rowHeight, TRUE);
+        if (input.wrapCheck) MoveWindow(input.wrapCheck, margin + labelWidth + 484, y + 2, 56, rowHeight, TRUE);
+        if (input.rotationCombo) MoveWindow(input.rotationCombo, margin + labelWidth + 546, y, 92, 120, TRUE);
+        if (input.alignmentCombo) MoveWindow(input.alignmentCombo, margin + labelWidth + 644, y, 84, 120, TRUE);
         if (input.symbologyCombo)
         {
-            MoveWindow(input.symbologyCombo, margin + labelWidth + 452, y, 96, 120, TRUE);
+            MoveWindow(input.symbologyCombo, margin + labelWidth + 546, y, 96, 120, TRUE);
         }
         y += rowHeight + rowGap;
     }
@@ -327,6 +376,26 @@ void MainWindow::CreateElementInputs()
             SendMessageW(input.symbologyCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Code39"));
             SendMessageW(input.symbologyCombo, CB_SETCURSEL, element.barcodeSymbology == BarcodeSymbology::Code39 ? 1 : 0, 0);
         }
+        else
+        {
+            input.italicCheck = CreateWindowExW(0, L"BUTTON", L"It", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(FirstInputId + i * InputsPerElement + 6)), nullptr, nullptr);
+            input.underlineCheck = CreateWindowExW(0, L"BUTTON", L"Un", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(FirstInputId + i * InputsPerElement + 7)), nullptr, nullptr);
+            input.wrapCheck = CreateWindowExW(0, L"BUTTON", L"Wrap", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTOCHECKBOX, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(FirstInputId + i * InputsPerElement + 8)), nullptr, nullptr);
+            input.rotationCombo = CreateWindowExW(0, L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(FirstInputId + i * InputsPerElement + 9)), nullptr, nullptr);
+            SendMessageW(input.rotationCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Normal"));
+            SendMessageW(input.rotationCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"90"));
+            SendMessageW(input.rotationCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"180"));
+            SendMessageW(input.rotationCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"270"));
+            SendMessageW(input.rotationCombo, CB_SETCURSEL, static_cast<int>(element.rotation), 0);
+            input.alignmentCombo = CreateWindowExW(0, L"COMBOBOX", nullptr, WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL, 0, 0, 0, 0, windowHandle, reinterpret_cast<HMENU>(static_cast<INT_PTR>(FirstInputId + i * InputsPerElement + 10)), nullptr, nullptr);
+            SendMessageW(input.alignmentCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Left"));
+            SendMessageW(input.alignmentCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Center"));
+            SendMessageW(input.alignmentCombo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Right"));
+            SendMessageW(input.alignmentCombo, CB_SETCURSEL, static_cast<int>(element.alignment), 0);
+            SendMessageW(input.italicCheck, BM_SETCHECK, element.italic ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendMessageW(input.underlineCheck, BM_SETCHECK, element.underline ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendMessageW(input.wrapCheck, BM_SETCHECK, element.wrap ? BST_CHECKED : BST_UNCHECKED, 0);
+        }
 
         elementInputs.push_back(input);
     }
@@ -342,6 +411,11 @@ void MainWindow::DestroyElementInputs()
         if (input.yEdit) DestroyWindow(input.yEdit);
         if (input.sizeEdit) DestroyWindow(input.sizeEdit);
         if (input.optionCheck) DestroyWindow(input.optionCheck);
+        if (input.italicCheck) DestroyWindow(input.italicCheck);
+        if (input.underlineCheck) DestroyWindow(input.underlineCheck);
+        if (input.wrapCheck) DestroyWindow(input.wrapCheck);
+        if (input.rotationCombo) DestroyWindow(input.rotationCombo);
+        if (input.alignmentCombo) DestroyWindow(input.alignmentCombo);
         if (input.symbologyCombo) DestroyWindow(input.symbologyCombo);
     }
 }
@@ -378,6 +452,22 @@ void MainWindow::SyncInputsToTemplate()
                 element.fontHeight = fontHeight;
                 element.fontWidth = fontHeight;
                 element.bold = SendMessageW(input.optionCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                element.italic = input.italicCheck && SendMessageW(input.italicCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                element.underline = input.underlineCheck && SendMessageW(input.underlineCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                element.wrap = input.wrapCheck && SendMessageW(input.wrapCheck, BM_GETCHECK, 0, 0) == BST_CHECKED;
+                element.multiline = element.wrap;
+                element.maxLines = element.wrap ? 3 : 1;
+                element.boxWidth = std::max(80, labelTemplate.labelWidthDots - element.x - 20);
+                if (input.rotationCombo)
+                {
+                    int selected = static_cast<int>(SendMessageW(input.rotationCombo, CB_GETCURSEL, 0, 0));
+                    element.rotation = selected == 1 ? FieldRotation::Rotate90 : (selected == 2 ? FieldRotation::Inverted : (selected == 3 ? FieldRotation::Rotate270 : FieldRotation::Normal));
+                }
+                if (input.alignmentCombo)
+                {
+                    int selected = static_cast<int>(SendMessageW(input.alignmentCombo, CB_GETCURSEL, 0, 0));
+                    element.alignment = selected == 1 ? TextAlignment::Center : (selected == 2 ? TextAlignment::Right : TextAlignment::Left);
+                }
             }
         }
     }
@@ -391,6 +481,37 @@ void MainWindow::SyncSettingsFromControls()
     printerSettings.printSpeed = GetWindowIntValue(speedEdit, printerSettings.printSpeed);
     labelTemplate.labelWidthDots = GetWindowIntValue(labelWidthEdit, labelTemplate.labelWidthDots);
     labelTemplate.labelHeightDots = GetWindowIntValue(labelHeightEdit, labelTemplate.labelHeightDots);
+    labelTemplate.marginLeftDots = GetWindowIntValue(marginLeftEdit, labelTemplate.marginLeftDots);
+    labelTemplate.marginTopDots = GetWindowIntValue(marginTopEdit, labelTemplate.marginTopDots);
+    labelTemplate.gapDots = GetWindowIntValue(gapEdit, labelTemplate.gapDots);
+
+    int mediaMode = static_cast<int>(SendMessageW(mediaModeCombo, CB_GETCURSEL, 0, 0));
+    labelTemplate.mediaTrackingMode = mediaMode == 1 ? MediaTrackingMode::BlackMark : (mediaMode == 2 ? MediaTrackingMode::Continuous : MediaTrackingMode::Gap);
+    int orientation = static_cast<int>(SendMessageW(orientationCombo, CB_GETCURSEL, 0, 0));
+    labelTemplate.orientation = orientation == 1 ? LabelOrientation::Landscape : LabelOrientation::Portrait;
+}
+
+void MainWindow::ApplyPreviewPosition(std::size_t elementIndex, int x, int y)
+{
+    if (elementIndex >= labelTemplate.elements.size())
+    {
+        return;
+    }
+
+    labelTemplate.elements[elementIndex].x = x;
+    labelTemplate.elements[elementIndex].y = y;
+
+    for (const ElementInput& input : elementInputs)
+    {
+        if (input.elementIndex == elementIndex)
+        {
+            SetWindowIntValue(input.xEdit, x);
+            SetWindowIntValue(input.yEdit, y);
+            break;
+        }
+    }
+
+    previewWidget.SetTemplate(labelTemplate);
 }
 
 void MainWindow::PrintTemplate()
@@ -501,6 +622,11 @@ void MainWindow::RefreshTemplateControls()
 {
     SetWindowIntValue(labelWidthEdit, labelTemplate.labelWidthDots);
     SetWindowIntValue(labelHeightEdit, labelTemplate.labelHeightDots);
+    SetWindowIntValue(marginLeftEdit, labelTemplate.marginLeftDots);
+    SetWindowIntValue(marginTopEdit, labelTemplate.marginTopDots);
+    SetWindowIntValue(gapEdit, labelTemplate.gapDots);
+    SendMessageW(mediaModeCombo, CB_SETCURSEL, labelTemplate.mediaTrackingMode == MediaTrackingMode::BlackMark ? 1 : (labelTemplate.mediaTrackingMode == MediaTrackingMode::Continuous ? 2 : 0), 0);
+    SendMessageW(orientationCombo, CB_SETCURSEL, labelTemplate.orientation == LabelOrientation::Landscape ? 1 : 0, 0);
     CreateElementInputs();
 
     RECT rect = {};

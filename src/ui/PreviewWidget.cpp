@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include <windowsx.h>
 
 namespace
 {
@@ -82,6 +83,27 @@ LRESULT CALLBACK PreviewWidget::WindowProc(HWND window, UINT message, WPARAM wPa
         return 0;
     }
 
+    if (message == WM_LBUTTONDOWN && preview)
+    {
+        preview->BeginDrag(window, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        return 0;
+    }
+
+    if (message == WM_MOUSEMOVE && preview)
+    {
+        if (wParam & MK_LBUTTON)
+        {
+            preview->DragTo(window, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        }
+        return 0;
+    }
+
+    if (message == WM_LBUTTONUP && preview)
+    {
+        preview->EndDrag(window);
+        return 0;
+    }
+
     return DefWindowProcW(window, message, wParam, lParam);
 }
 
@@ -134,10 +156,7 @@ void PreviewWidget::Paint(HWND window)
 
         if (element.type == LabelElementType::Barcode)
         {
-            int barcodeWidth = std::max(96, static_cast<int>(element.text.length()) * 12);
-            int scaledWidth = ScaleX(element.x + barcodeWidth, labelRect) - x;
-            int scaledHeight = ScaleY(element.y + element.barcodeHeight, labelRect) - y;
-            RECT barcodeRect = { x, y, x + scaledWidth, y + std::max(24, scaledHeight) };
+            RECT barcodeRect = GetElementRect(element, labelRect);
 
             HBRUSH barcodeBrush = CreateSolidBrush(RGB(30, 34, 40));
             int moduleWidth = std::max(2, element.barcodeModuleWidth * 2);
@@ -191,8 +210,21 @@ void PreviewWidget::Paint(HWND window)
 
             HFONT oldFont = reinterpret_cast<HFONT>(SelectObject(dc, font));
             std::wstring text = ToWide(element.text);
-            RECT textRect = { x, y, labelRect.right - 8, y + fontSize + 8 };
-            DrawTextW(dc, text.c_str(), -1, &textRect, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+            RECT textRect = GetElementRect(element, labelRect);
+            int format = DT_LEFT | DT_NOPREFIX | DT_TOP;
+            if (element.alignment == TextAlignment::Center)
+            {
+                format = DT_CENTER | DT_NOPREFIX | DT_TOP;
+            }
+            else if (element.alignment == TextAlignment::Right)
+            {
+                format = DT_RIGHT | DT_NOPREFIX | DT_TOP;
+            }
+            if (!element.wrap && !element.multiline)
+            {
+                format |= DT_SINGLELINE;
+            }
+            DrawTextW(dc, text.c_str(), -1, &textRect, format);
             SelectObject(dc, oldFont);
             DeleteObject(font);
 
@@ -206,6 +238,70 @@ void PreviewWidget::Paint(HWND window)
     }
 
     EndPaint(window, &paint);
+}
+
+void PreviewWidget::BeginDrag(HWND window, int x, int y)
+{
+    RECT clientRect = {};
+    GetClientRect(window, &clientRect);
+    RECT labelRect = GetLabelRect(clientRect);
+    draggingElement = HitTest(x, y, labelRect);
+    if (draggingElement < 0)
+    {
+        return;
+    }
+
+    const LabelElement& element = currentTemplate.elements[draggingElement];
+    dragOffsetX = UnscaleX(x, labelRect) - element.x;
+    dragOffsetY = UnscaleY(y, labelRect) - element.y;
+    SetCapture(window);
+}
+
+void PreviewWidget::DragTo(HWND window, int x, int y)
+{
+    if (draggingElement < 0 || static_cast<std::size_t>(draggingElement) >= currentTemplate.elements.size())
+    {
+        return;
+    }
+
+    RECT clientRect = {};
+    GetClientRect(window, &clientRect);
+    RECT labelRect = GetLabelRect(clientRect);
+
+    LabelElement& element = currentTemplate.elements[draggingElement];
+    element.x = std::max(0, UnscaleX(x, labelRect) - dragOffsetX);
+    element.y = std::max(0, UnscaleY(y, labelRect) - dragOffsetY);
+    InvalidateRect(window, nullptr, TRUE);
+
+    HWND parent = GetParent(window);
+    if (parent)
+    {
+        LPARAM packedPosition = MAKELPARAM(static_cast<WORD>(element.x), static_cast<WORD>(element.y));
+        SendMessageW(parent, PositionChangedMessage, static_cast<WPARAM>(draggingElement), packedPosition);
+    }
+}
+
+void PreviewWidget::EndDrag(HWND window)
+{
+    if (draggingElement >= 0)
+    {
+        ReleaseCapture();
+    }
+    draggingElement = -1;
+}
+
+int PreviewWidget::HitTest(int x, int y, const RECT& labelRect) const
+{
+    for (int i = static_cast<int>(currentTemplate.elements.size()) - 1; i >= 0; --i)
+    {
+        RECT rect = GetElementRect(currentTemplate.elements[i], labelRect);
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom)
+        {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 RECT PreviewWidget::GetLabelRect(const RECT& clientRect) const
@@ -239,4 +335,37 @@ int PreviewWidget::ScaleY(int value, const RECT& labelRect) const
 {
     int height = labelRect.bottom - labelRect.top;
     return labelRect.top + (value * height / std::max(1, currentTemplate.labelHeightDots));
+}
+
+int PreviewWidget::UnscaleX(int value, const RECT& labelRect) const
+{
+    int width = labelRect.right - labelRect.left;
+    return (value - labelRect.left) * std::max(1, currentTemplate.labelWidthDots) / std::max(1, width);
+}
+
+int PreviewWidget::UnscaleY(int value, const RECT& labelRect) const
+{
+    int height = labelRect.bottom - labelRect.top;
+    return (value - labelRect.top) * std::max(1, currentTemplate.labelHeightDots) / std::max(1, height);
+}
+
+RECT PreviewWidget::GetElementRect(const LabelElement& element, const RECT& labelRect) const
+{
+    int x = ScaleX(element.x, labelRect);
+    int y = ScaleY(element.y, labelRect);
+
+    if (element.type == LabelElementType::Barcode)
+    {
+        int barcodeWidth = std::max(96, static_cast<int>(element.text.length()) * element.barcodeModuleWidth * 10);
+        int scaledWidth = ScaleX(element.x + barcodeWidth, labelRect) - x;
+        int scaledHeight = ScaleY(element.y + element.barcodeHeight, labelRect) - y;
+        return { x, y, x + std::max(24, scaledWidth), y + std::max(24, scaledHeight) };
+    }
+
+    int fontSize = std::max(12, static_cast<int>(ScaleY(element.fontHeight, labelRect) - labelRect.top));
+    int width = ScaleX(element.x + element.boxWidth, labelRect) - x;
+    int lines = element.multiline || element.wrap ? element.maxLines : 1;
+    int height = std::max(fontSize + 8, lines * (fontSize + 4));
+    int previewTop = y - std::max(0, fontSize / 6);
+    return { x, previewTop, x + std::max(40, width), previewTop + height };
 }

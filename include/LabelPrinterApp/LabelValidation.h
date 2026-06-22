@@ -45,6 +45,16 @@ public:
             AddTemplateIssue(result, "Label height must be greater than zero.");
         }
 
+        if (labelTemplate.marginLeftDots < 0 || labelTemplate.marginTopDots < 0)
+        {
+            AddTemplateIssue(result, "Label margins cannot be negative.");
+        }
+
+        if (labelTemplate.gapDots < 0)
+        {
+            AddTemplateIssue(result, "Label gap cannot be negative.");
+        }
+
         if (labelTemplate.elements.empty())
         {
             AddTemplateIssue(result, "Template must contain at least one element.");
@@ -93,6 +103,16 @@ private:
             if (element.fontHeight <= 0 || element.fontWidth <= 0)
             {
                 AddElementIssue(result, index, "Text font dimensions must be greater than zero.");
+            }
+
+            if (element.boxWidth <= 0)
+            {
+                AddElementIssue(result, index, "Text box width must be greater than zero.");
+            }
+
+            if (element.maxLines <= 0)
+            {
+                AddElementIssue(result, index, "Text max lines must be greater than zero.");
             }
         }
     }
