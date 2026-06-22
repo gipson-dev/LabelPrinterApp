@@ -39,7 +39,7 @@ private:
     QDoubleSpinBox* xSpin_ = nullptr;
     QDoubleSpinBox* ySpin_ = nullptr;
     QDoubleSpinBox* boxWidthSpin_ = nullptr;
-    QSpinBox* fontHeightSpin_ = nullptr;
+    QComboBox* fontSizeCombo_ = nullptr;
     QSpinBox* fontWidthSpin_ = nullptr;
     QCheckBox* boldCheck_ = nullptr;
     QCheckBox* italicCheck_ = nullptr;

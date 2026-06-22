@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-22
+
+- Updated bundled templates and sample CSV records to use visible sample label data built around the Code 128 value `226026-K-003`.
+- Improved the visual barcode preview so Code 128 bars are generated from the encoded value instead of decorative placeholder stripes.
+- Changed the element font size editor to a preset dropdown.
+- Added an Installed Printer selector row with a Refresh button in the print settings panel.
+
 ## 2026-06-21
 
 - Added sample template labels for inventory, shelf/bin, QR asset tags, serial numbers, price labels, and mini shipping labels, and wired the Templates tab to load JSON templates from disk.

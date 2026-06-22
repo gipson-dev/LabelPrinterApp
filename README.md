@@ -10,7 +10,7 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Add text, Code 128 barcodes, Code 39 barcodes, and QR codes.
 - Move label items by dragging them in the preview.
 - Work in focused tabs for Design, Elements, Data, Print, Templates, and Settings.
-- Edit font size, bold, italic, underline, rotation, alignment, wrapping, margins, gap, darkness, speed, and copies.
+- Edit font size from a preset dropdown, plus bold, italic, underline, rotation, alignment, wrapping, margins, gap, darkness, speed, and copies.
 - Use placeholders like `{ItemNumber}`, `{Lot}`, `{Date}`, `{Time}`, `{Serial}`, and `{RecordIndex}`.
 - Print one label, a serial-number range, selected CSV rows, or every CSV row.
 - Use a CSV `Quantity` or `Qty` column to print more than one label per row.
@@ -21,7 +21,7 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 1. Install the Zebra Windows printer driver.
 2. Make sure the printer is set up for ZPL printing.
 3. Open LabelPrinterApp.
-4. Select your Zebra printer from the Printer list.
+4. Open the Print tab and select your Zebra printer from the Installed Printer list. Click `Refresh` if it was just plugged in or installed.
 5. Confirm the label size:
    - Width: `2.25`
    - Height: `0.75`
@@ -35,7 +35,7 @@ Use `examples\sample_items.csv` as a starting point:
 
 ```csv
 ItemNumber,Description,Lot,Quantity
-A100-001,"Bracket, left hand",LOT-2401,2
+226026-K-003,"Direct thermal removable label",LOT-K003,2
 ```
 
 In the app:
@@ -56,12 +56,12 @@ ITEM {ItemNumber}
 
 The default template is [templates/default_label.json](templates/default_label.json). It includes:
 
-- A title using `{ItemNumber}`
-- A description field using `{Description}`
-- A Code 128 barcode using `{ItemNumber}`
-- A QR code using `{ItemNumber}`, `{Lot}`, and `{Date}`
+- A title with `226026-K-003`
+- A description field for a removable adhesive label
+- A Code 128 barcode encoding `226026-K-003`
+- A QR code with the item, lot, and date
 
-The `templates/` folder also includes ready-made samples for inventory labels, shelf/bin labels, QR asset tags, serial-number labels, price labels, and mini shipping labels. Open the `Templates` tab and double-click a template to load it.
+The `templates/` folder also includes ready-made samples for inventory labels, shelf/bin labels, QR asset tags, serial-number labels, price labels, and mini shipping labels. Open the `Templates` tab and double-click a template to load it. The bundled barcode templates use Code 128 for inventory-style values such as `226026-K-003`.
 
 ## Building From Source
 

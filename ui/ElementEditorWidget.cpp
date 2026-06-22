@@ -7,7 +7,43 @@
 #include <QLineEdit>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <algorithm>
 #include <vector>
+
+namespace
+{
+void addFontSizeOption(QComboBox* combo, int dots)
+{
+    combo->addItem(QString("%1 dots").arg(dots), dots);
+}
+
+int currentFontSize(const QComboBox* combo)
+{
+    return combo->currentData().toInt();
+}
+
+void selectFontSize(QComboBox* combo, int dots)
+{
+    int index = combo->findData(dots);
+    if (index < 0)
+    {
+        combo->addItem(QString("%1 dots").arg(dots), dots);
+        std::vector<std::pair<int, QString>> values;
+        for (int i = 0; i < combo->count(); ++i)
+        {
+            values.emplace_back(combo->itemData(i).toInt(), combo->itemText(i));
+        }
+        std::sort(values.begin(), values.end());
+        combo->clear();
+        for (const auto& value : values)
+        {
+            combo->addItem(value.second, value.first);
+        }
+        index = combo->findData(dots);
+    }
+    combo->setCurrentIndex(index);
+}
+}
 
 ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     : QWidget(parent)
@@ -32,9 +68,12 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
         spin->setSingleStep(0.01);
         spin->setSuffix(" in");
     }
-    fontHeightSpin_ = new QSpinBox(this);
+    fontSizeCombo_ = new QComboBox(this);
+    for (int size : {12, 16, 18, 22, 26, 30, 36, 44, 48, 56, 64, 72, 96})
+    {
+        addFontSizeOption(fontSizeCombo_, size);
+    }
     fontWidthSpin_ = new QSpinBox(this);
-    fontHeightSpin_->setRange(8, 300);
     fontWidthSpin_->setRange(8, 300);
     boldCheck_ = new QCheckBox("Bold", this);
     italicCheck_ = new QCheckBox("Italic", this);
@@ -65,7 +104,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     form->addRow("X", xSpin_);
     form->addRow("Y", ySpin_);
     form->addRow("Box Width", boxWidthSpin_);
-    form->addRow("Font Height", fontHeightSpin_);
+    form->addRow("Font Size", fontSizeCombo_);
     form->addRow("Font Width", fontWidthSpin_);
     form->addRow(boldCheck_);
     form->addRow(italicCheck_);
@@ -84,7 +123,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     {
         connect(edit, &QLineEdit::textChanged, this, &ElementEditorWidget::emitChanged);
     }
-    for (QComboBox* combo : {typeCombo_, sourceCombo_, alignmentCombo_, rotationCombo_})
+    for (QComboBox* combo : {typeCombo_, sourceCombo_, fontSizeCombo_, alignmentCombo_, rotationCombo_})
     {
         connect(combo, &QComboBox::currentIndexChanged, this, [this] { updateVisibility(); emitChanged(); });
     }
@@ -92,7 +131,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     {
         connect(spin, &QDoubleSpinBox::valueChanged, this, &ElementEditorWidget::emitChanged);
     }
-    for (QSpinBox* spin : {fontHeightSpin_, fontWidthSpin_, maxLinesSpin_, barcodeHeightSpin_, moduleWidthSpin_, qrMagnificationSpin_})
+    for (QSpinBox* spin : {fontWidthSpin_, maxLinesSpin_, barcodeHeightSpin_, moduleWidthSpin_, qrMagnificationSpin_})
     {
         connect(spin, &QSpinBox::valueChanged, this, &ElementEditorWidget::emitChanged);
     }
@@ -130,7 +169,7 @@ void ElementEditorWidget::setElement(const LabelElement* element)
     xSpin_->setValue(element->xInches);
     ySpin_->setValue(element->yInches);
     boxWidthSpin_->setValue(element->boxWidthInches);
-    fontHeightSpin_->setValue(element->fontHeightDots);
+    selectFontSize(fontSizeCombo_, element->fontHeightDots);
     fontWidthSpin_->setValue(element->fontWidthDots);
     boldCheck_->setChecked(element->bold);
     italicCheck_->setChecked(element->italic);
@@ -161,7 +200,7 @@ LabelElement ElementEditorWidget::element() const
     e.xInches = xSpin_->value();
     e.yInches = ySpin_->value();
     e.boxWidthInches = boxWidthSpin_->value();
-    e.fontHeightDots = fontHeightSpin_->value();
+    e.fontHeightDots = currentFontSize(fontSizeCombo_);
     e.fontWidthDots = fontWidthSpin_->value();
     e.bold = boldCheck_->isChecked();
     e.italic = italicCheck_->isChecked();
@@ -193,7 +232,7 @@ void ElementEditorWidget::updateVisibility()
     bool qr = typeCombo_->currentIndex() == static_cast<int>(LabelElementType::QrCode);
 
     const std::vector<QWidget*> textWidgets = {
-        fontHeightSpin_,
+        fontSizeCombo_,
         fontWidthSpin_,
         boldCheck_,
         italicCheck_,

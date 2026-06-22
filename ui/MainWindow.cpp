@@ -99,6 +99,7 @@ void MainWindow::buildUi()
     }
     connect(mediaCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
     connect(orientationCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
+    connect(printerCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
 }
 
 void MainWindow::buildMenus()
@@ -436,7 +437,13 @@ QWidget* MainWindow::buildPrinterSettingsPanel(QWidget* parent)
     serialEndSpin_->setRange(0, 999999999);
     serialEndSpin_->setValue(1);
 
-    settingsLayout->addRow("Printer", printerCombo_);
+    auto* printerRow = new QWidget(group);
+    auto* printerRowLayout = new QHBoxLayout(printerRow);
+    printerRowLayout->setContentsMargins(0, 0, 0, 0);
+    auto* refreshPrintersButton = new QPushButton("Refresh", printerRow);
+    printerRowLayout->addWidget(printerCombo_, 1);
+    printerRowLayout->addWidget(refreshPrintersButton);
+    settingsLayout->addRow("Installed Printer", printerRow);
     settingsLayout->addRow("DPI", dpiSpin_);
     settingsLayout->addRow("Width", widthSpin_);
     settingsLayout->addRow("Height", heightSpin_);
@@ -450,16 +457,23 @@ QWidget* MainWindow::buildPrinterSettingsPanel(QWidget* parent)
     settingsLayout->addRow("Copies", copiesSpin_);
     settingsLayout->addRow("Serial Start", serialStartSpin_);
     settingsLayout->addRow("Serial End", serialEndSpin_);
+    connect(refreshPrintersButton, &QPushButton::clicked, this, &MainWindow::refreshPrinterList);
     return group;
 }
 
 void MainWindow::refreshPrinterList()
 {
     std::string error;
+    const QString previous = printerCombo_->currentText();
     printerCombo_->clear();
     for (const std::string& printer : ZebraPrinter::installedPrinters(error))
     {
         printerCombo_->addItem(QString::fromStdString(printer));
+    }
+    int previousIndex = printerCombo_->findText(previous);
+    if (previousIndex >= 0)
+    {
+        printerCombo_->setCurrentIndex(previousIndex);
     }
     if (!error.empty())
     {
@@ -522,6 +536,11 @@ void MainWindow::refreshSettingsControls()
     speedSpin_->setValue(s.speedIps);
     darknessSpin_->setValue(s.darkness);
     copiesSpin_->setValue(s.copies);
+    int printerIndex = printerCombo_->findText(QString::fromStdString(s.printerName));
+    if (printerIndex >= 0)
+    {
+        printerCombo_->setCurrentIndex(printerIndex);
+    }
 }
 
 void MainWindow::refreshPreview()
@@ -555,9 +574,9 @@ void MainWindow::addElement(LabelElementType type)
     element.type = type;
     element.name = type == LabelElementType::Text ? "Text" : (type == LabelElementType::QrCode ? "QR Code" : "Barcode");
     element.id = element.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
-    element.text = type == LabelElementType::Text ? "Text" : "{ItemNumber}";
-    element.source = type == LabelElementType::Text ? FieldSource::Fixed : FieldSource::Variable;
-    element.variableName = type == LabelElementType::Text ? "" : "ItemNumber";
+    element.text = type == LabelElementType::Text ? "Text" : "226026-K-003";
+    element.source = FieldSource::Fixed;
+    element.variableName.clear();
     if (type == LabelElementType::Text)
     {
         element.name = "Text / Number";
@@ -580,6 +599,7 @@ void MainWindow::addElement(LabelElementType type)
     {
         element.xInches = 1.78;
         element.yInches = 0.08;
+        element.text = "ITEM:226026-K-003";
         element.qrMagnification = 4;
     }
     labelTemplate_.elements.push_back(element);
@@ -848,6 +868,7 @@ void MainWindow::printAllCsvRows()
 void MainWindow::updateTemplateFromSettings()
 {
     PrinterSettings& s = labelTemplate_.settings;
+    s.printerName = printerCombo_->currentText().toStdString();
     s.dpi = dpiSpin_->value();
     s.labelWidthInches = std::max(0.1, widthSpin_->value());
     s.labelHeightInches = std::max(0.1, heightSpin_->value());

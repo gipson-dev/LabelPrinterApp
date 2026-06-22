@@ -24,9 +24,9 @@ struct LabelTemplate
         item.id = "item_text";
         item.name = "Item Number";
         item.type = LabelElementType::Text;
-        item.source = FieldSource::Variable;
-        item.text = "Item: {ItemNumber}";
-        item.variableName = "ItemNumber";
+        item.source = FieldSource::Fixed;
+        item.text = "226026-K-003";
+        item.variableName = "";
         item.xInches = 0.07;
         item.yInches = 0.04;
         item.boxWidthInches = 2.0;
@@ -39,9 +39,9 @@ struct LabelTemplate
         code.id = "item_barcode";
         code.name = "Code 128";
         code.type = LabelElementType::Code128Barcode;
-        code.source = FieldSource::Variable;
-        code.text = "{ItemNumber}";
-        code.variableName = "ItemNumber";
+        code.source = FieldSource::Fixed;
+        code.text = "226026-K-003";
+        code.variableName = "";
         code.xInches = 0.12;
         code.yInches = 0.34;
         code.barcodeHeightDots = 48;

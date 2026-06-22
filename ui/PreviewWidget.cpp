@@ -4,7 +4,9 @@
 #include <QPainter>
 #include <QFontMetrics>
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <vector>
 
 #include "core/VariableResolver.h"
 
@@ -18,6 +20,53 @@ double safeLabelWidth(const LabelTemplate& labelTemplate)
 double safeLabelHeight(const LabelTemplate& labelTemplate)
 {
     return std::max(0.1, labelTemplate.settings.labelHeightInches);
+}
+
+std::vector<int> code128Modules(const std::string& value)
+{
+    static const std::array<const char*, 107> patterns = {
+        "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+        "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+        "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+        "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+        "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+        "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+        "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+        "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+        "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+        "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+        "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+    };
+
+    std::vector<int> codes;
+    codes.push_back(104);
+    for (unsigned char ch : value)
+    {
+        if (ch < 32 || ch > 127)
+        {
+            ch = '?';
+        }
+        codes.push_back(static_cast<int>(ch) - 32);
+    }
+
+    int checksum = codes.front();
+    for (std::size_t i = 1; i < codes.size(); ++i)
+    {
+        checksum += codes[i] * static_cast<int>(i);
+    }
+    codes.push_back(checksum % 103);
+    codes.push_back(106);
+
+    std::vector<int> modules;
+    for (int code : codes)
+    {
+        const char* pattern = patterns[static_cast<std::size_t>(code)];
+        for (const char* p = pattern; *p; ++p)
+        {
+            modules.push_back(*p - '0');
+        }
+    }
+    return modules;
 }
 }
 
@@ -250,8 +299,8 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "A100-001" :
-                                                placeholder.first == "Description" ? "Sample Item" :
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" :
+                                                placeholder.first == "Description" ? "Direct Thermal Removable Label" :
                                                 placeholder.first == "Lot" ? "LOT-001" :
                                                 placeholder.first == "Bin" ? "A-01" :
                                                 placeholder.first == "Quantity" ? "1" :
@@ -296,7 +345,7 @@ void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& el
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "A100-001" : "123456";
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" : "226026-K-003";
         }
     }
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
@@ -306,10 +355,36 @@ void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& el
     painter.save();
     painter.setPen(Qt::NoPen);
     painter.setBrush(Qt::black);
-    int module = std::max(2, static_cast<int>(element.barcodeModuleWidth / static_cast<double>(template_.settings.dpi) * scaleX));
-    for (int x = static_cast<int>(bars.left()); x < static_cast<int>(bars.right()); x += module * 3)
+    if (element.type == LabelElementType::Code128Barcode)
     {
-        painter.drawRect(QRectF(x, bars.top(), module, bars.height()));
+        const std::vector<int> modules = code128Modules(value.toStdString());
+        int totalModules = 0;
+        for (int module : modules)
+        {
+            totalModules += module;
+        }
+
+        double x = bars.left();
+        const double unit = bars.width() / std::max(1, totalModules);
+        bool bar = true;
+        for (int module : modules)
+        {
+            const double width = unit * module;
+            if (bar)
+            {
+                painter.drawRect(QRectF(x, bars.top(), std::max(1.0, width), bars.height()));
+            }
+            x += width;
+            bar = !bar;
+        }
+    }
+    else
+    {
+        int module = std::max(2, static_cast<int>(element.barcodeModuleWidth / static_cast<double>(template_.settings.dpi) * scaleX));
+        for (int x = static_cast<int>(bars.left()); x < static_cast<int>(bars.right()); x += module * 3)
+        {
+            painter.drawRect(QRectF(x, bars.top(), module, bars.height()));
+        }
     }
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(selected ? QColor(0, 120, 215) : QColor(70, 130, 180), selected ? 2 : 1));
@@ -333,7 +408,7 @@ void PreviewWidget::drawQrElement(QPainter& painter, const LabelElement& element
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "A100-001" : "Sample";
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" : "Sample";
         }
     }
     painter.save();
