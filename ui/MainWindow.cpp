@@ -318,11 +318,11 @@ void MainWindow::configureCsvMapping()
         auto existing = csvMappingOverrides_.find(placeholder);
         if (existing != csvMappingOverrides_.end())
         {
-            currentIndex = std::max(0, headerChoices.indexOf(QString::fromStdString(existing->second)));
+            currentIndex = std::max(0, static_cast<int>(headerChoices.indexOf(QString::fromStdString(existing->second))));
         }
         else
         {
-            currentIndex = std::max(0, headerChoices.indexOf(QString::fromStdString(placeholder)));
+            currentIndex = std::max(0, static_cast<int>(headerChoices.indexOf(QString::fromStdString(placeholder))));
         }
 
         QString selected = QInputDialog::getItem(

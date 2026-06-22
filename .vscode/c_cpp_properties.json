@@ -6,7 +6,8 @@
                 "${workspaceFolder}",
                 "${workspaceFolder}/core",
                 "${workspaceFolder}/ui",
-                "${env:CMAKE_PREFIX_PATH}/include"
+                "${env:CMAKE_PREFIX_PATH}/include",
+                "C:/Qt/6.8.3/msvc2022_64/include"
             ],
             "defines": [
                 "WIN32_LEAN_AND_MEAN",

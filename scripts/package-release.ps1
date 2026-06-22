@@ -41,6 +41,24 @@ if (!$windeployqt -and $env:CMAKE_PREFIX_PATH) {
         $windeployqt = $candidate
     }
 }
+if (!$windeployqt) {
+    $qtRoot = "C:\Qt"
+    if (Test-Path $qtRoot) {
+        $qtPrefix = Get-ChildItem -Path $qtRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object {
+                $prefix = Join-Path $_.FullName "msvc2022_64"
+                $candidate = Join-Path $prefix "bin\windeployqt.exe"
+                if (Test-Path $candidate) {
+                    $candidate
+                }
+            } |
+            Select-Object -First 1
+        if ($qtPrefix) {
+            $windeployqt = $qtPrefix
+        }
+    }
+}
 
 if ($windeployqt) {
     & $windeployqt (Join-Path $OutputDir "LabelPrinterApp.exe")

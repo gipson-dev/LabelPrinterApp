@@ -190,11 +190,28 @@ void ElementEditorWidget::updateVisibility()
                    typeCombo_->currentIndex() == static_cast<int>(LabelElementType::Code39Barcode);
     bool qr = typeCombo_->currentIndex() == static_cast<int>(LabelElementType::QrCode);
 
-    for (QWidget* widget : {fontHeightSpin_, fontWidthSpin_, boldCheck_, italicCheck_, underlineCheck_, wrapCheck_, autoFitCheck_, maxLinesSpin_, alignmentCombo_})
+    const std::vector<QWidget*> textWidgets = {
+        fontHeightSpin_,
+        fontWidthSpin_,
+        boldCheck_,
+        italicCheck_,
+        underlineCheck_,
+        wrapCheck_,
+        autoFitCheck_,
+        maxLinesSpin_,
+        alignmentCombo_
+    };
+    for (QWidget* widget : textWidgets)
     {
         widget->setVisible(text);
     }
-    for (QWidget* widget : {barcodeHeightSpin_, moduleWidthSpin_, humanReadableCheck_})
+
+    const std::vector<QWidget*> barcodeWidgets = {
+        barcodeHeightSpin_,
+        moduleWidthSpin_,
+        humanReadableCheck_
+    };
+    for (QWidget* widget : barcodeWidgets)
     {
         widget->setVisible(barcode);
     }

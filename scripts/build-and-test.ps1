@@ -48,6 +48,41 @@ function Find-CMake {
     throw "Unable to find cmake.exe. Install CMake or Visual Studio with Desktop development with C++."
 }
 
+function Find-QtPrefix {
+    if ($env:CMAKE_PREFIX_PATH) {
+        return $env:CMAKE_PREFIX_PATH
+    }
+
+    if ($env:Qt6_DIR) {
+        $qt6ConfigDir = Resolve-Path $env:Qt6_DIR -ErrorAction SilentlyContinue
+        if ($qt6ConfigDir) {
+            $qtPrefix = Resolve-Path (Join-Path $qt6ConfigDir.Path "..\..\..") -ErrorAction SilentlyContinue
+            if ($qtPrefix) {
+                return $qtPrefix.Path
+            }
+        }
+    }
+
+    $qtRoot = "C:\Qt"
+    if (Test-Path $qtRoot) {
+        $candidate = Get-ChildItem -Path $qtRoot -Directory -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object {
+                $prefix = Join-Path $_.FullName "msvc2022_64"
+                if (Test-Path (Join-Path $prefix "lib\cmake\Qt6\Qt6Config.cmake")) {
+                    $prefix
+                }
+            } |
+            Select-Object -First 1
+
+        if ($candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 function Invoke-Native {
     param(
         [Parameter(Mandatory = $true)]
@@ -93,14 +128,8 @@ if (!(Test-Path $ctest)) {
     $ctest = $ctestCommand.Source
 }
 
-if (!$CMakePrefixPath -and $env:Qt6_DIR) {
-    $qt6ConfigDir = Resolve-Path $env:Qt6_DIR -ErrorAction SilentlyContinue
-    if ($qt6ConfigDir) {
-        $qtPrefix = Resolve-Path (Join-Path $qt6ConfigDir.Path "..\..\..") -ErrorAction SilentlyContinue
-        if ($qtPrefix) {
-            $CMakePrefixPath = $qtPrefix.Path
-        }
-    }
+if (!$CMakePrefixPath) {
+    $CMakePrefixPath = Find-QtPrefix
 }
 
 Write-Host "Using CMake: $cmake"

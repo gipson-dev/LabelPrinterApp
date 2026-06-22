@@ -76,10 +76,12 @@ $env:CMAKE_PREFIX_PATH = "C:\Qt\6.7.3\msvc2022_64"
 .\scripts\build-and-test.ps1 -Config Release
 ```
 
+On this development machine, the script auto-detects `C:\Qt\6.8.3\msvc2022_64`, so the normal VS Code build task can run without extra arguments.
+
 Or run CMake directly:
 
 ```powershell
-cmake -S . -B build -DCMAKE_PREFIX_PATH=C:\Qt\6.7.3\msvc2022_64
+cmake -S . -B build -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```

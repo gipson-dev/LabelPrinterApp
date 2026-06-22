@@ -72,6 +72,14 @@ if (LABELPRINTERAPP_BUILD_APP)
 
     if (WIN32)
         target_link_libraries(LabelPrinterApp PRIVATE Winspool)
+        get_filename_component(QT_BIN_DIR "${Qt6_DIR}/../../../bin" ABSOLUTE)
+        find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${QT_BIN_DIR}")
+        if (WINDEPLOYQT_EXECUTABLE)
+            add_custom_command(TARGET LabelPrinterApp POST_BUILD
+                COMMAND "${WINDEPLOYQT_EXECUTABLE}" --no-translations --no-system-d3d-compiler --no-opengl-sw $<TARGET_FILE:LabelPrinterApp>
+                COMMENT "Deploying Qt runtime files"
+            )
+        endif()
     else()
         message(FATAL_ERROR "LabelPrinterApp currently targets Windows RAW printer APIs.")
     endif()
