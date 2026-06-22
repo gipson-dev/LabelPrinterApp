@@ -316,6 +316,8 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
         {
             context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" :
                                                 placeholder.first == "Description" ? "Direct Thermal Removable Label" :
+                                                placeholder.first == "Order id" ? "1001" :
+                                                placeholder.first == "Name" ? "Database school 2" :
                                                 placeholder.first == "Lot" ? "LOT-001" :
                                                 placeholder.first == "Bin" ? "A-01" :
                                                 placeholder.first == "Quantity" ? "1" :
@@ -368,7 +370,9 @@ void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& el
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" : "226026-K-003";
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" :
+                                                placeholder.first == "Order id" ? "1001" :
+                                                "226026-K-003";
         }
     }
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
@@ -440,7 +444,10 @@ void PreviewWidget::drawQrElement(QPainter& painter, const LabelElement& element
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" : "Sample";
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" :
+                                                placeholder.first == "Order id" ? "1001" :
+                                                placeholder.first == "Name" ? "Database school 2" :
+                                                "Sample";
         }
     }
     painter.save();

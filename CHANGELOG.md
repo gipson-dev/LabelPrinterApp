@@ -2,6 +2,8 @@
 
 ## 2026-06-22
 
+- Fixed database printing so checked Excel/CSV rows print their own field values instead of repeating a fixed sample item number from the active template.
+- Updated bundled item/barcode templates to use `{ItemNumber}`, `{Description}`, `{Lot}`, `{Order id}`, and `{Name}` placeholders where appropriate.
 - Added an Excel database-style Data tab with `.xlsx`/CSV load, editable table records, print checkboxes, per-row copies, search, range selection, save/save-as, and label-template variable mapping from column headers.
 - Added modular Excel records classes: `ExcelImporter`, `ExcelTableModel`, `ExcelRecordsWidget`, and `RecordRangeParser`.
 - Added QXlsx FetchContent integration for workbook import/export in the Qt app.

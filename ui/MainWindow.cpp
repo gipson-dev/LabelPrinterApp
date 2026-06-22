@@ -646,9 +646,9 @@ void MainWindow::addElement(LabelElementType type)
     element.type = type;
     element.name = type == LabelElementType::Text ? "Text" : (type == LabelElementType::QrCode ? "QR Code" : "Barcode");
     element.id = element.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
-    element.text = type == LabelElementType::Text ? "Text" : "226026-K-003";
-    element.source = FieldSource::Fixed;
-    element.variableName.clear();
+    element.text = type == LabelElementType::Text ? "Text" : "{ItemNumber}";
+    element.source = type == LabelElementType::Text ? FieldSource::Fixed : FieldSource::Variable;
+    element.variableName = type == LabelElementType::Text ? "" : "ItemNumber";
     if (type == LabelElementType::Text)
     {
         element.name = "Text / Number";
@@ -671,7 +671,7 @@ void MainWindow::addElement(LabelElementType type)
     {
         element.xInches = 1.78;
         element.yInches = 0.08;
-        element.text = "ITEM:226026-K-003";
+        element.text = "ITEM:{ItemNumber}";
         element.qrMagnification = 4;
     }
     labelTemplate_.elements.push_back(element);
@@ -874,6 +874,12 @@ void MainWindow::printTestLabel()
 
 void MainWindow::printCurrent()
 {
+    if (excelRecords_ && !excelRecords_->records().records.empty())
+    {
+        printSelectedCsvRows();
+        return;
+    }
+
     const int start = serialStartSpin_->value();
     const int end = serialEndSpin_->value();
     if (end != start)
