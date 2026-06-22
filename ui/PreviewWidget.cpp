@@ -61,6 +61,21 @@ void PreviewWidget::paintEvent(QPaintEvent*)
     painter.drawRoundedRect(label, 5, 5);
     drawGrid(painter, label);
 
+    if (template_.elements.empty())
+    {
+        LabelElement sample;
+        sample.name = "Preview Text";
+        sample.text = "Sample Text";
+        sample.xInches = 0.18;
+        sample.yInches = 0.12;
+        sample.boxWidthInches = 1.8;
+        sample.fontHeightDots = 64;
+        sample.fontWidthDots = 48;
+        sample.bold = true;
+        drawTextElement(painter, sample, label, true);
+        return;
+    }
+
     for (int i = 0; i < static_cast<int>(template_.elements.size()); ++i)
     {
         const LabelElement& element = template_.elements[i];
