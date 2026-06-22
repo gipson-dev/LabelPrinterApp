@@ -2,6 +2,9 @@
 
 ## 2026-06-21
 
+- Added Phase 18 release automation with a GitHub Actions workflow that packages a Windows x64 ZIP, uploads it as an artifact, and publishes GitHub Releases for `v*` tags.
+- Rewrote the README around user workflows: quick start, printing from CSV, default template behavior, build steps, and packaging steps.
+- Ignored local Qt source checkouts with `qt/` and improved build script Qt prefix detection from `Qt6_DIR`.
 - Rebuilt the application structure around the requested Qt 6 Version 5 architecture with root-level `core/`, `ui/`, `main.cpp`, `templates/`, and `examples/`.
 - Added CSV import, header detection, placeholder mapping, CSV record preview, selected/all row printing, and quantity-per-row handling.
 - Added prompt-at-print placeholder resolution, date/time placeholders, auto-increment serial contexts, prefix/suffix formatting, and serial range printing.

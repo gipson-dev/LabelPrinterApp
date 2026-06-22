@@ -93,7 +93,20 @@ if (!(Test-Path $ctest)) {
     $ctest = $ctestCommand.Source
 }
 
+if (!$CMakePrefixPath -and $env:Qt6_DIR) {
+    $qt6ConfigDir = Resolve-Path $env:Qt6_DIR -ErrorAction SilentlyContinue
+    if ($qt6ConfigDir) {
+        $qtPrefix = Resolve-Path (Join-Path $qt6ConfigDir.Path "..\..\..") -ErrorAction SilentlyContinue
+        if ($qtPrefix) {
+            $CMakePrefixPath = $qtPrefix.Path
+        }
+    }
+}
+
 Write-Host "Using CMake: $cmake"
+if ($CMakePrefixPath) {
+    Write-Host "Using CMAKE_PREFIX_PATH: $CMakePrefixPath"
+}
 if ($CMakePrefixPath) {
     Invoke-Native $cmake -S . -B $BuildDir -DCMAKE_PREFIX_PATH="$CMakePrefixPath"
 } else {

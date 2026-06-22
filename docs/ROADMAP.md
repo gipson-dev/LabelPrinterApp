@@ -21,12 +21,12 @@ This roadmap tracks the twenty-phase build plan. The current implementation cove
 | 15 | Advanced formatting | Complete for foundation | Font, bold, italic, underline, rotation, alignment, wrapping, multiline, fixed/variable fields, prefix/suffix, and auto-fit metadata. |
 | 16 | Drag-and-drop designer | Complete for foundation | Preview supports drag-to-move element positioning. Full designer handles/snapping remain future polish. |
 | 17 | Packaging as EXE | Complete for foundation | Release packaging script copies app assets and runs `windeployqt` when available. |
-| 18 | GitHub and releases | Started | GitHub Actions installs Qt, builds, and runs tests. Release artifact automation remains next. |
+| 18 | GitHub and releases | Complete for foundation | GitHub Actions builds/tests on main and packages release ZIP artifacts from manual runs or `v*` tags. |
 | 19 | Testing and calibration | Started | Core tests cover ZPL, CSV, variables, serial ranges, and template storage. Printer calibration checklist remains next. |
 | 20 | Final polish | Not started | UI fit, validation depth, persistent settings, and full designer polish. |
 
 ## Next Order
 
-1. Add a GitHub release workflow that publishes packaged EXE artifacts.
-2. Add printer calibration notes for 203 DPI and 300 DPI Zebra media.
-3. Add persistent app settings and print history storage.
+1. Continue with Phase 19 by adding printer calibration notes for 203 DPI and 300 DPI Zebra media.
+2. Add manual QA checklists for template editing, CSV printing, and printer setup.
+3. Continue with Phase 20 by adding persistent app settings and print history storage.

@@ -24,6 +24,7 @@ logs/
 # Dependency folders
 node_modules/
 vendor/
+qt/
 
 # Build and cache output
 dist/
