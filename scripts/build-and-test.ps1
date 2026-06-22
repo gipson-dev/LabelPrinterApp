@@ -47,6 +47,27 @@ function Find-CMake {
     throw "Unable to find cmake.exe. Install CMake or Visual Studio with Desktop development with C++."
 }
 
+function Clear-MsBuildTrackingLogs {
+    param(
+        [string]$BuildDir,
+        [string]$Config
+    )
+
+    if (!(Test-Path $BuildDir)) {
+        return
+    }
+
+    $configDirs = Get-ChildItem -Path $BuildDir -Directory -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq $Config -and $_.FullName -like "*.dir\$Config" }
+
+    foreach ($configDir in $configDirs) {
+        Get-ChildItem -Path $configDir.FullName -Directory -Filter "*.tlog" -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force
+            }
+    }
+}
+
 $cmake = Find-CMake
 $ctest = Join-Path (Split-Path $cmake -Parent) "ctest.exe"
 if (!(Test-Path $ctest)) {
@@ -59,5 +80,6 @@ if (!(Test-Path $ctest)) {
 
 Write-Host "Using CMake: $cmake"
 & $cmake -S . -B $BuildDir
+Clear-MsBuildTrackingLogs -BuildDir $BuildDir -Config $Config
 & $cmake --build $BuildDir --config $Config
 & $ctest --test-dir $BuildDir -C $Config --output-on-failure
