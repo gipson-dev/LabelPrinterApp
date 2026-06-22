@@ -8,6 +8,19 @@
 
 #include "core/VariableResolver.h"
 
+namespace
+{
+double safeLabelWidth(const LabelTemplate& labelTemplate)
+{
+    return std::max(0.1, labelTemplate.settings.labelWidthInches);
+}
+
+double safeLabelHeight(const LabelTemplate& labelTemplate)
+{
+    return std::max(0.1, labelTemplate.settings.labelHeightInches);
+}
+}
+
 PreviewWidget::PreviewWidget(QWidget* parent)
     : QWidget(parent),
       template_(LabelTemplate::defaultTemplate())
@@ -41,18 +54,20 @@ void PreviewWidget::paintEvent(QPaintEvent*)
     painter.fillRect(rect(), QColor(238, 241, 245));
 
     QRectF label = labelRect();
+    const double labelWidthInches = safeLabelWidth(template_);
+    const double labelHeightInches = safeLabelHeight(template_);
     painter.setPen(QPen(QColor(90, 90, 90), 1));
     painter.drawText(QRectF(label.left(), label.top() - 24, label.width(), 18), Qt::AlignCenter,
-                     QString("%1\" x %2\"").arg(template_.settings.labelWidthInches, 0, 'f', 2).arg(template_.settings.labelHeightInches, 0, 'f', 2));
+                     QString("%1\" x %2\"").arg(labelWidthInches, 0, 'f', 2).arg(labelHeightInches, 0, 'f', 2));
     painter.setPen(QPen(QColor(140, 140, 140), 1));
-    for (double x = 0.0; x <= template_.settings.labelWidthInches + 0.001; x += 0.25)
+    for (double x = 0.0; x <= labelWidthInches + 0.001; x += 0.25)
     {
-        const double wx = label.left() + x / template_.settings.labelWidthInches * label.width();
+        const double wx = label.left() + x / labelWidthInches * label.width();
         painter.drawLine(QPointF(wx, label.top() - 12), QPointF(wx, label.top() - (std::abs(std::fmod(x, 1.0)) < 0.001 ? 24 : 16)));
     }
-    for (double y = 0.0; y <= template_.settings.labelHeightInches + 0.001; y += 0.25)
+    for (double y = 0.0; y <= labelHeightInches + 0.001; y += 0.25)
     {
-        const double wy = label.top() + y / template_.settings.labelHeightInches * label.height();
+        const double wy = label.top() + y / labelHeightInches * label.height();
         painter.drawLine(QPointF(label.left() - 12, wy), QPointF(label.left() - (std::abs(std::fmod(y, 1.0)) < 0.001 ? 24 : 16), wy));
     }
 
@@ -134,7 +149,7 @@ void PreviewWidget::mouseReleaseEvent(QMouseEvent*)
 
 QRectF PreviewWidget::labelRect() const
 {
-    const double aspect = template_.settings.labelWidthInches / template_.settings.labelHeightInches;
+    const double aspect = safeLabelWidth(template_) / safeLabelHeight(template_);
     QRectF available = rect().adjusted(28, 28, -28, -28);
     double width = available.width();
     double height = width / aspect;
@@ -149,8 +164,8 @@ QRectF PreviewWidget::labelRect() const
 QRectF PreviewWidget::elementRect(const LabelElement& element, const QRectF& label) const
 {
     QPointF topLeft = labelToWidget(element.xInches, element.yInches, label);
-    double scaleX = label.width() / template_.settings.labelWidthInches;
-    double scaleY = label.height() / template_.settings.labelHeightInches;
+    double scaleX = label.width() / safeLabelWidth(template_);
+    double scaleY = label.height() / safeLabelHeight(template_);
 
     if (element.type == LabelElementType::Text)
     {
@@ -176,15 +191,19 @@ QRectF PreviewWidget::elementRect(const LabelElement& element, const QRectF& lab
 QPointF PreviewWidget::labelToWidget(double xInches, double yInches, const QRectF& label) const
 {
     return QPointF(
-        label.left() + xInches / template_.settings.labelWidthInches * label.width(),
-        label.top() + yInches / template_.settings.labelHeightInches * label.height());
+        label.left() + xInches / safeLabelWidth(template_) * label.width(),
+        label.top() + yInches / safeLabelHeight(template_) * label.height());
 }
 
 QPointF PreviewWidget::widgetToLabel(const QPointF& point, const QRectF& label) const
 {
+    if (label.width() <= 0.0 || label.height() <= 0.0)
+    {
+        return QPointF();
+    }
     return QPointF(
-        (point.x() - label.left()) / label.width() * template_.settings.labelWidthInches,
-        (point.y() - label.top()) / label.height() * template_.settings.labelHeightInches);
+        (point.x() - label.left()) / label.width() * safeLabelWidth(template_),
+        (point.y() - label.top()) / label.height() * safeLabelHeight(template_));
 }
 
 int PreviewWidget::hitTest(const QPointF& point) const
@@ -204,14 +223,16 @@ void PreviewWidget::drawGrid(QPainter& painter, const QRectF& label) const
 {
     painter.save();
     painter.setPen(QPen(QColor(226, 232, 240), 1, Qt::DotLine));
-    for (double x = 0.25; x < template_.settings.labelWidthInches; x += 0.25)
+    const double labelWidthInches = safeLabelWidth(template_);
+    const double labelHeightInches = safeLabelHeight(template_);
+    for (double x = 0.25; x < labelWidthInches; x += 0.25)
     {
-        double wx = label.left() + x / template_.settings.labelWidthInches * label.width();
+        double wx = label.left() + x / labelWidthInches * label.width();
         painter.drawLine(QPointF(wx, label.top()), QPointF(wx, label.bottom()));
     }
-    for (double y = 0.25; y < template_.settings.labelHeightInches; y += 0.25)
+    for (double y = 0.25; y < labelHeightInches; y += 0.25)
     {
-        double wy = label.top() + y / template_.settings.labelHeightInches * label.height();
+        double wy = label.top() + y / labelHeightInches * label.height();
         painter.drawLine(QPointF(label.left(), wy), QPointF(label.right(), wy));
     }
     painter.restore();
@@ -238,7 +259,7 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
         }
     }
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
-    double scaleY = label.height() / template_.settings.labelHeightInches;
+    double scaleY = label.height() / safeLabelHeight(template_);
     int pixelSize = std::max(18, static_cast<int>(element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
 
     QFont font("Arial");
@@ -278,8 +299,8 @@ void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& el
         }
     }
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
-    double scaleX = label.width() / template_.settings.labelWidthInches;
-    double barHeight = element.barcodeHeightDots / static_cast<double>(template_.settings.dpi) * (label.height() / template_.settings.labelHeightInches);
+    double scaleX = label.width() / safeLabelWidth(template_);
+    double barHeight = element.barcodeHeightDots / static_cast<double>(template_.settings.dpi) * (label.height() / safeLabelHeight(template_));
     QRectF bars = QRectF(box.left(), box.top(), box.width(), std::min(box.height(), std::max(18.0, barHeight)));
     painter.save();
     painter.setPen(Qt::NoPen);

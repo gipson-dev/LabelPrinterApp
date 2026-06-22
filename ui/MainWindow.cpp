@@ -411,10 +411,14 @@ QWidget* MainWindow::buildPrinterSettingsPanel(QWidget* parent)
     for (QDoubleSpinBox* spin : {widthSpin_, heightSpin_, marginLeftSpin_, marginTopSpin_, gapSpin_})
     {
         spin->setDecimals(3);
-        spin->setRange(0.0, 10.0);
         spin->setSuffix(" in");
         spin->setSingleStep(0.01);
     }
+    widthSpin_->setRange(0.1, 10.0);
+    heightSpin_->setRange(0.1, 10.0);
+    marginLeftSpin_->setRange(0.0, 10.0);
+    marginTopSpin_->setRange(0.0, 10.0);
+    gapSpin_->setRange(0.0, 10.0);
     mediaCombo_ = new QComboBox(group);
     mediaCombo_->addItems({"Gap", "Black mark", "Continuous"});
     orientationCombo_ = new QComboBox(group);
@@ -494,10 +498,22 @@ void MainWindow::refreshTemplateLibrary()
 
 void MainWindow::refreshSettingsControls()
 {
-    const PrinterSettings& s = labelTemplate_.settings;
+    const PrinterSettings s = labelTemplate_.settings;
+    QSignalBlocker dpiBlocker(dpiSpin_);
+    QSignalBlocker widthBlocker(widthSpin_);
+    QSignalBlocker heightBlocker(heightSpin_);
+    QSignalBlocker marginLeftBlocker(marginLeftSpin_);
+    QSignalBlocker marginTopBlocker(marginTopSpin_);
+    QSignalBlocker gapBlocker(gapSpin_);
+    QSignalBlocker mediaBlocker(mediaCombo_);
+    QSignalBlocker orientationBlocker(orientationCombo_);
+    QSignalBlocker speedBlocker(speedSpin_);
+    QSignalBlocker darknessBlocker(darknessSpin_);
+    QSignalBlocker copiesBlocker(copiesSpin_);
+
     dpiSpin_->setValue(s.dpi);
-    widthSpin_->setValue(s.labelWidthInches);
-    heightSpin_->setValue(s.labelHeightInches);
+    widthSpin_->setValue(std::max(0.1, s.labelWidthInches));
+    heightSpin_->setValue(std::max(0.1, s.labelHeightInches));
     marginLeftSpin_->setValue(s.marginLeftInches);
     marginTopSpin_->setValue(s.marginTopInches);
     gapSpin_->setValue(s.gapInches);
@@ -833,8 +849,8 @@ void MainWindow::updateTemplateFromSettings()
 {
     PrinterSettings& s = labelTemplate_.settings;
     s.dpi = dpiSpin_->value();
-    s.labelWidthInches = widthSpin_->value();
-    s.labelHeightInches = heightSpin_->value();
+    s.labelWidthInches = std::max(0.1, widthSpin_->value());
+    s.labelHeightInches = std::max(0.1, heightSpin_->value());
     s.marginLeftInches = marginLeftSpin_->value();
     s.marginTopInches = marginTopSpin_->value();
     s.gapInches = gapSpin_->value();
