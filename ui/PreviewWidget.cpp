@@ -39,9 +39,9 @@ void PreviewWidget::paintEvent(QPaintEvent*)
     painter.fillRect(rect(), QColor(238, 241, 245));
 
     QRectF label = labelRect();
-    painter.setPen(QPen(QColor(210, 210, 210), 1));
+    painter.setPen(QPen(QColor(96, 110, 128), 2));
     painter.setBrush(Qt::white);
-    painter.drawRoundedRect(label, 8, 8);
+    painter.drawRoundedRect(label, 5, 5);
     drawGrid(painter, label);
 
     for (int i = 0; i < static_cast<int>(template_.elements.size()); ++i)
@@ -130,13 +130,15 @@ QRectF PreviewWidget::elementRect(const LabelElement& element, const QRectF& lab
 
     if (element.type == LabelElementType::QrCode)
     {
-        double size = std::max(36.0, element.qrMagnification * 10.0);
+        double size = std::max(28.0, element.qrMagnification * 0.055 * scaleY);
         return QRectF(topLeft, QSizeF(size, size));
     }
 
-    double width = std::max(80.0, static_cast<double>(VariableResolver::elementValue(element, variables_).size() * element.barcodeModuleWidth * 4));
+    double module = element.barcodeModuleWidth / static_cast<double>(template_.settings.dpi) * scaleX;
+    double width = std::max(48.0, static_cast<double>(std::max<std::size_t>(8, VariableResolver::elementValue(element, variables_).size())) * module * 9.0);
     double height = element.barcodeHeightDots / static_cast<double>(template_.settings.dpi) * scaleY;
-    return QRectF(topLeft, QSizeF(width, std::max(24.0, height)));
+    double humanText = element.humanReadable ? std::max(14.0, height * 0.22) : 0.0;
+    return QRectF(topLeft, QSizeF(width, std::max(22.0, height) + humanText));
 }
 
 QPointF PreviewWidget::labelToWidget(double xInches, double yInches, const QRectF& label) const
@@ -186,10 +188,29 @@ void PreviewWidget::drawGrid(QPainter& painter, const QRectF& label) const
 void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const
 {
     QRectF box = elementRect(element, label);
-    QString value = QString::fromStdString(VariableResolver::elementValue(element, variables_));
-    double pointSize = std::max(8.0, element.fontHeightDots / 4.0);
+    VariableContext context = variables_;
+    if (context.serialNumber == 0)
+    {
+        context.serialNumber = 1;
+    }
+    for (const auto& placeholder : VariableResolver::findPlaceholders(element.text))
+    {
+        if (context.values.find(placeholder.first) == context.values.end())
+        {
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "A100-001" :
+                                                placeholder.first == "Description" ? "Sample Item" :
+                                                placeholder.first == "Lot" ? "LOT-001" :
+                                                placeholder.first == "Bin" ? "A-01" :
+                                                placeholder.first == "Quantity" ? "1" :
+                                                "Sample";
+        }
+    }
+    QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
+    double scaleY = label.height() / template_.settings.labelHeightInches;
+    int pixelSize = std::max(10, static_cast<int>(element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
 
-    QFont font("Arial", static_cast<int>(pointSize));
+    QFont font("Arial");
+    font.setPixelSize(pixelSize);
     font.setBold(element.bold);
     font.setItalic(element.italic);
     font.setUnderline(element.underline);
@@ -204,9 +225,9 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     else flags |= Qt::AlignLeft;
     if (element.wrap || element.multiLine) flags |= Qt::TextWordWrap;
 
-    QRectF textBox = box.adjusted(0, -2, 0, 0);
+    QRectF textBox = box.adjusted(2, 0, -2, 0);
     painter.drawText(textBox, flags, value);
-    painter.setPen(QPen(selected ? QColor(0, 120, 215) : QColor(120, 148, 180), 1, selected ? Qt::SolidLine : Qt::DashLine));
+    painter.setPen(QPen(selected ? QColor(0, 120, 215) : QColor(120, 148, 180), selected ? 2 : 1, selected ? Qt::SolidLine : Qt::DashLine));
     painter.drawRect(box);
     painter.restore();
 }
@@ -214,21 +235,36 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
 void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const
 {
     QRectF box = elementRect(element, label);
+    VariableContext context = variables_;
+    for (const auto& placeholder : VariableResolver::findPlaceholders(element.text))
+    {
+        if (context.values.find(placeholder.first) == context.values.end())
+        {
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "A100-001" : "123456";
+        }
+    }
+    QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
+    double scaleX = label.width() / template_.settings.labelWidthInches;
+    double barHeight = element.barcodeHeightDots / static_cast<double>(template_.settings.dpi) * (label.height() / template_.settings.labelHeightInches);
+    QRectF bars = QRectF(box.left(), box.top(), box.width(), std::min(box.height(), std::max(18.0, barHeight)));
     painter.save();
     painter.setPen(Qt::NoPen);
     painter.setBrush(Qt::black);
-    int module = std::max(2, element.barcodeModuleWidth * 2);
-    for (int x = static_cast<int>(box.left()); x < static_cast<int>(box.right()); x += module * 3)
+    int module = std::max(2, static_cast<int>(element.barcodeModuleWidth / static_cast<double>(template_.settings.dpi) * scaleX));
+    for (int x = static_cast<int>(bars.left()); x < static_cast<int>(bars.right()); x += module * 3)
     {
-        painter.drawRect(QRectF(x, box.top(), module, box.height()));
+        painter.drawRect(QRectF(x, bars.top(), module, bars.height()));
     }
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(QPen(selected ? QColor(0, 120, 215) : QColor(70, 130, 180), 1));
+    painter.setPen(QPen(selected ? QColor(0, 120, 215) : QColor(70, 130, 180), selected ? 2 : 1));
     painter.drawRect(box);
     if (element.humanReadable)
     {
+        QFont font("Arial");
+        font.setPixelSize(std::max(10, static_cast<int>(bars.height() * 0.22)));
+        painter.setFont(font);
         painter.setPen(Qt::black);
-        painter.drawText(QRectF(box.left(), box.bottom() + 3, box.width(), 20), Qt::AlignCenter, QString::fromStdString(VariableResolver::elementValue(element, variables_)));
+        painter.drawText(QRectF(box.left(), bars.bottom() + 2, box.width(), box.bottom() - bars.bottom()), Qt::AlignCenter, value);
     }
     painter.restore();
 }
@@ -236,12 +272,31 @@ void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& el
 void PreviewWidget::drawQrElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const
 {
     QRectF box = elementRect(element, label);
+    VariableContext context = variables_;
+    for (const auto& placeholder : VariableResolver::findPlaceholders(element.text))
+    {
+        if (context.values.find(placeholder.first) == context.values.end())
+        {
+            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "A100-001" : "Sample";
+        }
+    }
     painter.save();
-    painter.setPen(QPen(selected ? QColor(0, 120, 215) : Qt::black, 1));
-    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(selected ? QColor(0, 120, 215) : Qt::black, selected ? 2 : 1));
+    painter.setBrush(Qt::white);
     painter.drawRect(box);
-    painter.drawLine(box.topLeft(), box.bottomRight());
-    painter.drawLine(box.topRight(), box.bottomLeft());
-    painter.drawText(box, Qt::AlignCenter, "QR");
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::black);
+    const int cells = 9;
+    const double cell = box.width() / cells;
+    for (int y = 0; y < cells; ++y)
+    {
+        for (int x = 0; x < cells; ++x)
+        {
+            if ((x < 3 && y < 3) || (x > 5 && y < 3) || (x < 3 && y > 5) || ((x * 3 + y * 5) % 7 < 3))
+            {
+                painter.drawRect(QRectF(box.left() + x * cell, box.top() + y * cell, cell * 0.82, cell * 0.82));
+            }
+        }
+    }
     painter.restore();
 }
