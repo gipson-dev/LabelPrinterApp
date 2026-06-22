@@ -2,6 +2,8 @@
 
 ## 2026-06-21
 
+- Reworked the main window into the requested tab layout with File/Edit/View/Printer/Templates/Help menus, a main toolbar, and Design, Elements, Data, Print, Templates, and Settings tabs.
+- Added tab-level actions for duplicate, move up/down, CSV record preview, ZPL preview, and test-label printing.
 - Detected the local Qt install at `C:\Qt\6.8.3\msvc2022_64`, fixed Qt/MSVC compile issues, and enabled full Qt app build/test/package verification.
 - Added automatic Qt prefix discovery for `C:\Qt\*\msvc2022_64` and post-build `windeployqt` deployment for local app launches.
 - Added Phase 18 release automation with a GitHub Actions workflow that packages a Windows x64 ZIP, uploads it as an artifact, and publishes GitHub Releases for `v*` tags.

@@ -1,21 +1,31 @@
 #include "ui/MainWindow.h"
 
+#include <QCheckBox>
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
 #include <QInputDialog>
+#include <QLabel>
 #include <QListWidget>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QModelIndex>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QSignalBlocker>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QStringList>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QTextEdit>
 #include <QToolBar>
 #include <QVBoxLayout>
 
@@ -41,90 +51,17 @@ MainWindow::MainWindow(QWidget* parent)
 void MainWindow::buildUi()
 {
     setWindowTitle("LabelPrinterApp");
-    auto* toolbar = addToolBar("Label Tools");
-    toolbar->addAction("Add Text", this, [this] { addElement(LabelElementType::Text); });
-    toolbar->addAction("Add Code128", this, [this] { addElement(LabelElementType::Code128Barcode); });
-    toolbar->addAction("Add Code39", this, [this] { addElement(LabelElementType::Code39Barcode); });
-    toolbar->addAction("Add QR", this, [this] { addElement(LabelElementType::QrCode); });
-    toolbar->addAction("Delete", this, &MainWindow::deleteSelectedElement);
-    toolbar->addSeparator();
-    toolbar->addAction("Load", this, &MainWindow::loadTemplate);
-    toolbar->addAction("Save", this, &MainWindow::saveTemplate);
-    toolbar->addAction("Import CSV", this, &MainWindow::importCsv);
-    toolbar->addAction("Map CSV", this, &MainWindow::configureCsvMapping);
-    toolbar->addSeparator();
-    toolbar->addAction("Print Current", this, &MainWindow::printCurrent);
-    toolbar->addAction("Print Selected CSV", this, &MainWindow::printSelectedCsvRows);
-    toolbar->addAction("Print All CSV", this, &MainWindow::printAllCsvRows);
+    buildMenus();
+    buildToolbar();
 
-    auto* splitter = new QSplitter(this);
-    auto* left = new QWidget(splitter);
-    auto* leftLayout = new QVBoxLayout(left);
-
-    auto* settingsLayout = new QFormLayout;
-    printerCombo_ = new QComboBox(left);
-    dpiSpin_ = new QSpinBox(left);
-    dpiSpin_->setRange(100, 600);
-    widthSpin_ = new QDoubleSpinBox(left);
-    heightSpin_ = new QDoubleSpinBox(left);
-    marginLeftSpin_ = new QDoubleSpinBox(left);
-    marginTopSpin_ = new QDoubleSpinBox(left);
-    gapSpin_ = new QDoubleSpinBox(left);
-    for (QDoubleSpinBox* spin : {widthSpin_, heightSpin_, marginLeftSpin_, marginTopSpin_, gapSpin_})
-    {
-        spin->setDecimals(3);
-        spin->setRange(0.0, 10.0);
-        spin->setSuffix(" in");
-        spin->setSingleStep(0.01);
-    }
-    mediaCombo_ = new QComboBox(left);
-    mediaCombo_->addItems({"Gap", "Black mark", "Continuous"});
-    orientationCombo_ = new QComboBox(left);
-    orientationCombo_->addItems({"Portrait", "Landscape"});
-    speedSpin_ = new QSpinBox(left);
-    speedSpin_->setRange(1, 14);
-    darknessSpin_ = new QSpinBox(left);
-    darknessSpin_->setRange(0, 30);
-    copiesSpin_ = new QSpinBox(left);
-    copiesSpin_->setRange(1, 9999);
-    serialStartSpin_ = new QSpinBox(left);
-    serialStartSpin_->setRange(0, 999999999);
-    serialStartSpin_->setValue(1);
-    serialEndSpin_ = new QSpinBox(left);
-    serialEndSpin_->setRange(0, 999999999);
-    serialEndSpin_->setValue(1);
-
-    settingsLayout->addRow("Printer", printerCombo_);
-    settingsLayout->addRow("DPI", dpiSpin_);
-    settingsLayout->addRow("Width", widthSpin_);
-    settingsLayout->addRow("Height", heightSpin_);
-    settingsLayout->addRow("Left Margin", marginLeftSpin_);
-    settingsLayout->addRow("Top Margin", marginTopSpin_);
-    settingsLayout->addRow("Gap", gapSpin_);
-    settingsLayout->addRow("Sensing", mediaCombo_);
-    settingsLayout->addRow("Orientation", orientationCombo_);
-    settingsLayout->addRow("Speed", speedSpin_);
-    settingsLayout->addRow("Darkness", darknessSpin_);
-    settingsLayout->addRow("Copies", copiesSpin_);
-    settingsLayout->addRow("Serial Start", serialStartSpin_);
-    settingsLayout->addRow("Serial End", serialEndSpin_);
-    leftLayout->addLayout(settingsLayout);
-
-    elementList_ = new QListWidget(left);
-    editor_ = new ElementEditorWidget(left);
-    leftLayout->addWidget(elementList_);
-    leftLayout->addWidget(editor_);
-
-    auto* right = new QWidget(splitter);
-    auto* rightLayout = new QVBoxLayout(right);
-    preview_ = new PreviewWidget(right);
-    csvTable_ = new QTableWidget(right);
-    rightLayout->addWidget(preview_, 3);
-    rightLayout->addWidget(csvTable_, 2);
-    splitter->addWidget(left);
-    splitter->addWidget(right);
-    splitter->setStretchFactor(1, 1);
-    setCentralWidget(splitter);
+    tabs_ = new QTabWidget(this);
+    tabs_->addTab(buildDesignTab(), "Design");
+    tabs_->addTab(buildElementsTab(), "Elements");
+    tabs_->addTab(buildDataTab(), "Data");
+    tabs_->addTab(buildPrintTab(), "Print");
+    tabs_->addTab(buildTemplatesTab(), "Templates");
+    tabs_->addTab(buildSettingsTab(), "Settings");
+    setCentralWidget(tabs_);
 
     connect(elementList_, &QListWidget::currentRowChanged, this, &MainWindow::selectElement);
     connect(editor_, &ElementEditorWidget::elementChanged, this, [this](const LabelElement& element) {
@@ -160,6 +97,347 @@ void MainWindow::buildUi()
     }
     connect(mediaCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
     connect(orientationCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
+}
+
+void MainWindow::buildMenus()
+{
+    auto* file = menuBar()->addMenu("File");
+    file->addAction("New", this, &MainWindow::newTemplate);
+    file->addAction("Open", this, &MainWindow::loadTemplate);
+    file->addAction("Save", this, &MainWindow::saveTemplate);
+    file->addSeparator();
+    file->addAction("Exit", this, &QWidget::close);
+
+    auto* edit = menuBar()->addMenu("Edit");
+    edit->addAction("Duplicate Element", this, &MainWindow::duplicateSelectedElement);
+    edit->addAction("Delete Element", this, &MainWindow::deleteSelectedElement);
+    edit->addAction("Move Up", this, [this] { moveSelectedElement(-1); });
+    edit->addAction("Move Down", this, [this] { moveSelectedElement(1); });
+
+    auto* view = menuBar()->addMenu("View");
+    view->addAction("Preview ZPL", this, &MainWindow::previewZpl);
+
+    auto* printer = menuBar()->addMenu("Printer");
+    printer->addAction("Refresh Printers", this, &MainWindow::refreshPrinterList);
+    printer->addAction("Print Test Label", this, &MainWindow::printTestLabel);
+    printer->addAction("Print Labels", this, &MainWindow::printCurrent);
+
+    auto* templates = menuBar()->addMenu("Templates");
+    templates->addAction("Load Template", this, &MainWindow::loadTemplate);
+    templates->addAction("Save Template", this, &MainWindow::saveTemplate);
+
+    auto* help = menuBar()->addMenu("Help");
+    help->addAction("About", this, [this] {
+        QMessageBox::about(this, "About LabelPrinterApp", "LabelPrinterApp designs and prints Zebra ZPL labels.");
+    });
+}
+
+void MainWindow::buildToolbar()
+{
+    auto* toolbar = addToolBar("Main");
+    toolbar->addAction("New", this, &MainWindow::newTemplate);
+    toolbar->addAction("Open", this, &MainWindow::loadTemplate);
+    toolbar->addAction("Save", this, &MainWindow::saveTemplate);
+    toolbar->addSeparator();
+    toolbar->addAction("Print", this, &MainWindow::printCurrent);
+    toolbar->addAction("Preview", this, &MainWindow::previewZpl);
+    toolbar->addAction("Test Label", this, &MainWindow::printTestLabel);
+}
+
+QWidget* MainWindow::buildDesignTab()
+{
+    auto* tab = new QWidget(this);
+    auto* layout = new QHBoxLayout(tab);
+
+    auto* toolbox = new QGroupBox("Toolbox", tab);
+    auto* toolboxLayout = new QVBoxLayout(toolbox);
+    auto addToolButton = [this, toolboxLayout](const QString& text, LabelElementType type) {
+        auto* button = new QPushButton(text, this);
+        toolboxLayout->addWidget(button);
+        connect(button, &QPushButton::clicked, this, [this, type] { addElement(type); });
+    };
+    addToolButton("Text", LabelElementType::Text);
+    addToolButton("Barcode", LabelElementType::Code128Barcode);
+    addToolButton("QR Code", LabelElementType::QrCode);
+    auto* dateButton = new QPushButton("Date/Time", toolbox);
+    toolboxLayout->addWidget(dateButton);
+    connect(dateButton, &QPushButton::clicked, this, [this] {
+        addElement(LabelElementType::Text);
+        if (!labelTemplate_.elements.empty())
+        {
+            LabelElement& e = labelTemplate_.elements.back();
+            e.name = "Date Time";
+            e.text = "{Date} {Time}";
+            e.source = FieldSource::Fixed;
+            refreshElementList();
+            selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
+            refreshPreview();
+        }
+    });
+    auto* serialButton = new QPushButton("Serial #", toolbox);
+    toolboxLayout->addWidget(serialButton);
+    connect(serialButton, &QPushButton::clicked, this, [this] {
+        addElement(LabelElementType::Text);
+        if (!labelTemplate_.elements.empty())
+        {
+            LabelElement& e = labelTemplate_.elements.back();
+            e.name = "Serial Number";
+            e.text = "{Serial}";
+            e.source = FieldSource::SerialNumber;
+            e.serialWidth = 4;
+            refreshElementList();
+            selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
+            refreshPreview();
+        }
+    });
+    toolboxLayout->addWidget(new QPushButton("Line", toolbox));
+    toolboxLayout->addWidget(new QPushButton("Box", toolbox));
+    toolboxLayout->addStretch();
+
+    preview_ = new PreviewWidget(tab);
+
+    auto* properties = new QGroupBox("Properties", tab);
+    auto* propertiesLayout = new QVBoxLayout(properties);
+    editor_ = new ElementEditorWidget(properties);
+    propertiesLayout->addWidget(editor_);
+
+    layout->addWidget(toolbox, 0);
+    layout->addWidget(preview_, 1);
+    layout->addWidget(properties, 0);
+    return tab;
+}
+
+QWidget* MainWindow::buildElementsTab()
+{
+    auto* tab = new QWidget(this);
+    auto* layout = new QVBoxLayout(tab);
+    auto* content = new QHBoxLayout;
+
+    auto* listGroup = new QGroupBox("Element List", tab);
+    auto* listLayout = new QVBoxLayout(listGroup);
+    elementList_ = new QListWidget(listGroup);
+    listLayout->addWidget(elementList_);
+
+    auto* buttons = new QHBoxLayout;
+    auto* addButton = new QPushButton("Add", listGroup);
+    auto* duplicateButton = new QPushButton("Duplicate", listGroup);
+    auto* deleteButton = new QPushButton("Delete", listGroup);
+    auto* upButton = new QPushButton("Move Up", listGroup);
+    auto* downButton = new QPushButton("Move Down", listGroup);
+    buttons->addWidget(addButton);
+    buttons->addWidget(duplicateButton);
+    buttons->addWidget(deleteButton);
+    buttons->addWidget(upButton);
+    buttons->addWidget(downButton);
+    listLayout->addLayout(buttons);
+
+    connect(addButton, &QPushButton::clicked, this, [this] { addElement(LabelElementType::Text); });
+    connect(duplicateButton, &QPushButton::clicked, this, &MainWindow::duplicateSelectedElement);
+    connect(deleteButton, &QPushButton::clicked, this, &MainWindow::deleteSelectedElement);
+    connect(upButton, &QPushButton::clicked, this, [this] { moveSelectedElement(-1); });
+    connect(downButton, &QPushButton::clicked, this, [this] { moveSelectedElement(1); });
+
+    auto* settingsGroup = new QGroupBox("Element Settings", tab);
+    auto* settingsLayout = new QVBoxLayout(settingsGroup);
+    settingsLayout->addWidget(new QLabel("Use the Design tab properties panel for exact element values, position, font, rotation, and barcode settings.", settingsGroup));
+    settingsLayout->addStretch();
+
+    content->addWidget(listGroup, 1);
+    content->addWidget(settingsGroup, 1);
+    layout->addLayout(content);
+    return tab;
+}
+
+QWidget* MainWindow::buildDataTab()
+{
+    auto* tab = new QWidget(this);
+    auto* layout = new QVBoxLayout(tab);
+
+    auto* sourceGroup = new QGroupBox("Data Source", tab);
+    auto* sourceLayout = new QVBoxLayout(sourceGroup);
+    sourceLayout->addWidget(new QRadioButton("Manual Entry", sourceGroup));
+    sourceLayout->addWidget(new QRadioButton("Prompt Before Print", sourceGroup));
+    sourceLayout->addWidget(new QRadioButton("Auto-Increment Serial Numbers", sourceGroup));
+    auto* csvRadio = new QRadioButton("CSV File", sourceGroup);
+    csvRadio->setChecked(true);
+    sourceLayout->addWidget(csvRadio);
+    layout->addWidget(sourceGroup);
+
+    csvTable_ = new QTableWidget(tab);
+    layout->addWidget(csvTable_, 1);
+
+    auto* buttons = new QHBoxLayout;
+    auto* importButton = new QPushButton("Import CSV", tab);
+    auto* mapButton = new QPushButton("Map Columns", tab);
+    auto* previewRecordButton = new QPushButton("Preview Record", tab);
+    buttons->addWidget(importButton);
+    buttons->addWidget(mapButton);
+    buttons->addWidget(previewRecordButton);
+    buttons->addStretch();
+    layout->addLayout(buttons);
+
+    connect(importButton, &QPushButton::clicked, this, &MainWindow::importCsv);
+    connect(mapButton, &QPushButton::clicked, this, &MainWindow::configureCsvMapping);
+    connect(previewRecordButton, &QPushButton::clicked, this, &MainWindow::previewSelectedCsvRecord);
+    connect(csvTable_, &QTableWidget::itemSelectionChanged, this, &MainWindow::previewSelectedCsvRecord);
+    return tab;
+}
+
+QWidget* MainWindow::buildPrintTab()
+{
+    auto* tab = new QWidget(this);
+    auto* layout = new QVBoxLayout(tab);
+    layout->addWidget(buildPrinterSettingsPanel(tab));
+
+    auto* options = new QGroupBox("Options", tab);
+    auto* optionsLayout = new QVBoxLayout(options);
+    optionsLayout->addWidget(new QCheckBox("Print all CSV rows", options));
+    optionsLayout->addWidget(new QCheckBox("Print selected CSV rows only", options));
+    auto* quantityCheck = new QCheckBox("Use quantity column", options);
+    quantityCheck->setChecked(true);
+    optionsLayout->addWidget(quantityCheck);
+    optionsLayout->addWidget(new QCheckBox("Show ZPL before printing", options));
+    layout->addWidget(options);
+
+    auto* buttons = new QHBoxLayout;
+    auto* testButton = new QPushButton("Print Test Label", tab);
+    auto* zplButton = new QPushButton("Preview ZPL", tab);
+    auto* printButton = new QPushButton("Print Labels", tab);
+    auto* selectedButton = new QPushButton("Print Selected CSV", tab);
+    auto* allButton = new QPushButton("Print All CSV", tab);
+    buttons->addWidget(testButton);
+    buttons->addWidget(zplButton);
+    buttons->addWidget(printButton);
+    buttons->addWidget(selectedButton);
+    buttons->addWidget(allButton);
+    buttons->addStretch();
+    layout->addLayout(buttons);
+    layout->addStretch();
+
+    connect(testButton, &QPushButton::clicked, this, &MainWindow::printTestLabel);
+    connect(zplButton, &QPushButton::clicked, this, &MainWindow::previewZpl);
+    connect(printButton, &QPushButton::clicked, this, &MainWindow::printCurrent);
+    connect(selectedButton, &QPushButton::clicked, this, &MainWindow::printSelectedCsvRows);
+    connect(allButton, &QPushButton::clicked, this, &MainWindow::printAllCsvRows);
+    return tab;
+}
+
+QWidget* MainWindow::buildTemplatesTab()
+{
+    auto* tab = new QWidget(this);
+    auto* layout = new QVBoxLayout(tab);
+    auto* list = new QListWidget(tab);
+    list->addItems({"Default 2.25 x 0.75 Item Label", "Small Inventory Label", "Barcode Shelf Label", "QR Code Asset Label", "Serial Number Label"});
+    layout->addWidget(new QLabel("Template Library", tab));
+    layout->addWidget(list, 1);
+
+    auto* buttons = new QHBoxLayout;
+    auto* newButton = new QPushButton("New Template", tab);
+    auto* loadButton = new QPushButton("Load", tab);
+    auto* saveButton = new QPushButton("Save As", tab);
+    auto* deleteButton = new QPushButton("Delete", tab);
+    auto* defaultButton = new QPushButton("Set Default", tab);
+    buttons->addWidget(newButton);
+    buttons->addWidget(loadButton);
+    buttons->addWidget(saveButton);
+    buttons->addWidget(deleteButton);
+    buttons->addWidget(defaultButton);
+    buttons->addStretch();
+    layout->addLayout(buttons);
+
+    connect(newButton, &QPushButton::clicked, this, &MainWindow::newTemplate);
+    connect(loadButton, &QPushButton::clicked, this, &MainWindow::loadTemplate);
+    connect(saveButton, &QPushButton::clicked, this, &MainWindow::saveTemplate);
+    connect(deleteButton, &QPushButton::clicked, this, [this] {
+        QMessageBox::information(this, "Template Library", "Template deletion from the library will be added with persistent template indexing.");
+    });
+    connect(defaultButton, &QPushButton::clicked, this, [this] {
+        QMessageBox::information(this, "Template Library", "The current template can be saved as templates/default_label.json to make it the startup default.");
+    });
+    return tab;
+}
+
+QWidget* MainWindow::buildSettingsTab()
+{
+    auto* tab = new QWidget(this);
+    auto* layout = new QVBoxLayout(tab);
+    auto* form = new QFormLayout;
+    form->addRow("Default Printer", new QLabel("Uses the selected Windows printer from the Print tab.", tab));
+    form->addRow("Default DPI", new QLabel("203", tab));
+    form->addRow("Default Width", new QLabel("2.25 inches", tab));
+    form->addRow("Default Height", new QLabel("0.75 inches", tab));
+    form->addRow("Template Folder", new QLabel("templates/", tab));
+    form->addRow("CSV Folder", new QLabel("examples/", tab));
+    layout->addLayout(form);
+
+    auto* buttons = new QHBoxLayout;
+    auto* saveButton = new QPushButton("Save Settings", tab);
+    auto* resetButton = new QPushButton("Reset Defaults", tab);
+    buttons->addWidget(saveButton);
+    buttons->addWidget(resetButton);
+    buttons->addStretch();
+    layout->addLayout(buttons);
+    layout->addStretch();
+
+    connect(saveButton, &QPushButton::clicked, this, [this] {
+        QMessageBox::information(this, "Settings", "Persistent application settings will be added in the final polish phase.");
+    });
+    connect(resetButton, &QPushButton::clicked, this, &MainWindow::newTemplate);
+    return tab;
+}
+
+QWidget* MainWindow::buildPrinterSettingsPanel(QWidget* parent)
+{
+    auto* group = new QGroupBox("Printer Settings", parent);
+    auto* settingsLayout = new QFormLayout(group);
+
+    printerCombo_ = new QComboBox(group);
+    dpiSpin_ = new QSpinBox(group);
+    dpiSpin_->setRange(100, 600);
+    widthSpin_ = new QDoubleSpinBox(group);
+    heightSpin_ = new QDoubleSpinBox(group);
+    marginLeftSpin_ = new QDoubleSpinBox(group);
+    marginTopSpin_ = new QDoubleSpinBox(group);
+    gapSpin_ = new QDoubleSpinBox(group);
+    for (QDoubleSpinBox* spin : {widthSpin_, heightSpin_, marginLeftSpin_, marginTopSpin_, gapSpin_})
+    {
+        spin->setDecimals(3);
+        spin->setRange(0.0, 10.0);
+        spin->setSuffix(" in");
+        spin->setSingleStep(0.01);
+    }
+    mediaCombo_ = new QComboBox(group);
+    mediaCombo_->addItems({"Gap", "Black mark", "Continuous"});
+    orientationCombo_ = new QComboBox(group);
+    orientationCombo_->addItems({"Portrait", "Landscape"});
+    speedSpin_ = new QSpinBox(group);
+    speedSpin_->setRange(1, 14);
+    darknessSpin_ = new QSpinBox(group);
+    darknessSpin_->setRange(0, 30);
+    copiesSpin_ = new QSpinBox(group);
+    copiesSpin_->setRange(1, 9999);
+    serialStartSpin_ = new QSpinBox(group);
+    serialStartSpin_->setRange(0, 999999999);
+    serialStartSpin_->setValue(1);
+    serialEndSpin_ = new QSpinBox(group);
+    serialEndSpin_->setRange(0, 999999999);
+    serialEndSpin_->setValue(1);
+
+    settingsLayout->addRow("Printer", printerCombo_);
+    settingsLayout->addRow("DPI", dpiSpin_);
+    settingsLayout->addRow("Width", widthSpin_);
+    settingsLayout->addRow("Height", heightSpin_);
+    settingsLayout->addRow("Left Margin", marginLeftSpin_);
+    settingsLayout->addRow("Top Margin", marginTopSpin_);
+    settingsLayout->addRow("Gap", gapSpin_);
+    settingsLayout->addRow("Sensing", mediaCombo_);
+    settingsLayout->addRow("Orientation", orientationCombo_);
+    settingsLayout->addRow("Speed", speedSpin_);
+    settingsLayout->addRow("Darkness", darknessSpin_);
+    settingsLayout->addRow("Copies", copiesSpin_);
+    settingsLayout->addRow("Serial Start", serialStartSpin_);
+    settingsLayout->addRow("Serial End", serialEndSpin_);
+    return group;
 }
 
 void MainWindow::refreshPrinterList()
@@ -217,18 +495,46 @@ void MainWindow::loadDefaultTemplate()
     refreshPreview();
 }
 
+void MainWindow::newTemplate()
+{
+    labelTemplate_ = LabelTemplate::defaultTemplate();
+    csvMappingOverrides_.clear();
+    refreshSettingsControls();
+    refreshElementList();
+    selectElement(labelTemplate_.elements.empty() ? -1 : 0);
+    refreshPreview();
+}
+
 void MainWindow::addElement(LabelElementType type)
 {
     LabelElement element;
     element.type = type;
     element.name = type == LabelElementType::Text ? "Text" : (type == LabelElementType::QrCode ? "QR Code" : "Barcode");
-    element.id = element.name;
+    element.id = element.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
     element.text = type == LabelElementType::Text ? "Text" : "{ItemNumber}";
     element.source = type == LabelElementType::Text ? FieldSource::Fixed : FieldSource::Variable;
     element.variableName = type == LabelElementType::Text ? "" : "ItemNumber";
     labelTemplate_.elements.push_back(element);
     refreshElementList();
     selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
+    refreshPreview();
+}
+
+void MainWindow::duplicateSelectedElement()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
+    {
+        return;
+    }
+
+    LabelElement copy = labelTemplate_.elements[selectedElement_];
+    copy.name += " Copy";
+    copy.id += "_copy";
+    copy.xInches += 0.05;
+    copy.yInches += 0.05;
+    labelTemplate_.elements.insert(labelTemplate_.elements.begin() + selectedElement_ + 1, copy);
+    refreshElementList();
+    selectElement(selectedElement_ + 1);
     refreshPreview();
 }
 
@@ -240,7 +546,22 @@ void MainWindow::deleteSelectedElement()
     }
     labelTemplate_.elements.erase(labelTemplate_.elements.begin() + selectedElement_);
     refreshElementList();
-    selectElement(labelTemplate_.elements.empty() ? -1 : 0);
+    selectElement(labelTemplate_.elements.empty() ? -1 : std::min(selectedElement_, static_cast<int>(labelTemplate_.elements.size() - 1)));
+    refreshPreview();
+}
+
+void MainWindow::moveSelectedElement(int offset)
+{
+    int newIndex = selectedElement_ + offset;
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()) ||
+        newIndex < 0 || newIndex >= static_cast<int>(labelTemplate_.elements.size()))
+    {
+        return;
+    }
+
+    std::swap(labelTemplate_.elements[selectedElement_], labelTemplate_.elements[newIndex]);
+    refreshElementList();
+    selectElement(newIndex);
     refreshPreview();
 }
 
@@ -286,6 +607,7 @@ void MainWindow::importCsv()
             csvTable_->setItem(r, c, new QTableWidgetItem(QString::fromStdString(csvData_.rows[r][c])));
         }
     }
+    previewSelectedCsvRecord();
 }
 
 void MainWindow::configureCsvMapping()
@@ -342,6 +664,62 @@ void MainWindow::configureCsvMapping()
             csvMappingOverrides_[placeholder] = selected.toStdString();
         }
     }
+    previewSelectedCsvRecord();
+}
+
+void MainWindow::previewSelectedCsvRecord()
+{
+    if (csvData_.rows.empty())
+    {
+        preview_->setVariables({});
+        return;
+    }
+
+    int row = 0;
+    const auto selected = csvTable_->selectionModel() ? csvTable_->selectionModel()->selectedRows() : QModelIndexList{};
+    if (!selected.empty())
+    {
+        row = selected.front().row();
+    }
+    preview_->setVariables(contextForRow(row));
+}
+
+void MainWindow::previewZpl()
+{
+    VariableContext context;
+    if (!csvData_.rows.empty())
+    {
+        int row = 0;
+        const auto selected = csvTable_->selectionModel() ? csvTable_->selectionModel()->selectedRows() : QModelIndexList{};
+        if (!selected.empty())
+        {
+            row = selected.front().row();
+        }
+        context = contextForRow(row);
+    }
+
+    auto* dialog = new QDialog(this);
+    dialog->setWindowTitle("Generated ZPL");
+    dialog->resize(720, 520);
+    auto* layout = new QVBoxLayout(dialog);
+    auto* text = new QTextEdit(dialog);
+    text->setPlainText(QString::fromStdString(ZplGenerator::generate(labelTemplate_, context)));
+    text->setReadOnly(true);
+    layout->addWidget(text);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+    dialog->open();
+}
+
+void MainWindow::printTestLabel()
+{
+    VariableContext context;
+    context.values["ItemNumber"] = "TEST-123";
+    context.values["Description"] = "Test Label";
+    context.values["Lot"] = "LOT-TEST";
+    context.serialNumber = serialStartSpin_->value();
+    printContexts({context}, 1);
 }
 
 void MainWindow::printCurrent()

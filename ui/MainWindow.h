@@ -13,6 +13,7 @@ class QLineEdit;
 class QListWidget;
 class QPushButton;
 class QSpinBox;
+class QTabWidget;
 
 class ElementEditorWidget;
 class PreviewWidget;
@@ -26,17 +27,32 @@ public:
 
 private:
     void buildUi();
+    void buildMenus();
+    void buildToolbar();
+    QWidget* buildDesignTab();
+    QWidget* buildElementsTab();
+    QWidget* buildDataTab();
+    QWidget* buildPrintTab();
+    QWidget* buildTemplatesTab();
+    QWidget* buildSettingsTab();
+    QWidget* buildPrinterSettingsPanel(QWidget* parent);
     void refreshPrinterList();
     void refreshElementList();
     void refreshSettingsControls();
     void refreshPreview();
     void loadDefaultTemplate();
+    void newTemplate();
     void addElement(LabelElementType type);
+    void duplicateSelectedElement();
     void deleteSelectedElement();
+    void moveSelectedElement(int offset);
     void saveTemplate();
     void loadTemplate();
     void importCsv();
     void configureCsvMapping();
+    void previewSelectedCsvRecord();
+    void previewZpl();
+    void printTestLabel();
     void printCurrent();
     void printSelectedCsvRows();
     void printAllCsvRows();
@@ -53,6 +69,7 @@ private:
     std::map<std::string, std::string> csvMappingOverrides_;
     int selectedElement_ = -1;
 
+    QTabWidget* tabs_ = nullptr;
     PreviewWidget* preview_ = nullptr;
     ElementEditorWidget* editor_ = nullptr;
     QListWidget* elementList_ = nullptr;

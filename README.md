@@ -9,6 +9,7 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Design 2.25 x 0.75 inch Zebra labels for 203 DPI or 300 DPI printers.
 - Add text, Code 128 barcodes, Code 39 barcodes, and QR codes.
 - Move label items by dragging them in the preview.
+- Work in focused tabs for Design, Elements, Data, Print, Templates, and Settings.
 - Edit font size, bold, italic, underline, rotation, alignment, wrapping, margins, gap, darkness, speed, and copies.
 - Use placeholders like `{ItemNumber}`, `{Lot}`, `{Date}`, `{Time}`, `{Serial}`, and `{RecordIndex}`.
 - Print one label, a serial-number range, selected CSV rows, or every CSV row.
