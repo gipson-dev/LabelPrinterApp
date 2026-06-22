@@ -131,8 +131,10 @@ void MainWindow::buildUi()
         if (selectedElement_ >= 0 && selectedElement_ < static_cast<int>(labelTemplate_.elements.size()))
         {
             labelTemplate_.elements[selectedElement_] = element;
-            refreshElementList();
-            elementList_->setCurrentRow(selectedElement_);
+            if (auto* item = elementList_->item(selectedElement_))
+            {
+                item->setText(QString::fromStdString(element.name));
+            }
             refreshPreview();
         }
     });
@@ -143,6 +145,7 @@ void MainWindow::buildUi()
             labelTemplate_.elements[index].xInches = x;
             labelTemplate_.elements[index].yInches = y;
             selectElement(index);
+            refreshPreview();
         }
     });
 
@@ -202,6 +205,7 @@ void MainWindow::refreshSettingsControls()
 void MainWindow::refreshPreview()
 {
     preview_->setTemplate(labelTemplate_);
+    preview_->setSelectedElement(selectedElement_);
 }
 
 void MainWindow::loadDefaultTemplate()

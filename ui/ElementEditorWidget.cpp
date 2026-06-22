@@ -118,6 +118,7 @@ void ElementEditorWidget::setElement(const LabelElement* element)
         blockers.emplace_back(object);
     }
 
+    currentElement_ = *element;
     currentId_ = element->id.empty() ? element->name : element->id;
     nameEdit_->setText(QString::fromStdString(element->name));
     typeCombo_->setCurrentIndex(static_cast<int>(element->type));
@@ -148,7 +149,7 @@ void ElementEditorWidget::setElement(const LabelElement* element)
 
 LabelElement ElementEditorWidget::element() const
 {
-    LabelElement e;
+    LabelElement e = currentElement_;
     e.name = nameEdit_->text().toStdString();
     e.id = currentId_.empty() ? e.name : currentId_;
     e.type = static_cast<LabelElementType>(typeCombo_->currentIndex());
@@ -180,7 +181,8 @@ LabelElement ElementEditorWidget::element() const
 
 void ElementEditorWidget::emitChanged()
 {
-    emit elementChanged(element());
+    currentElement_ = element();
+    emit elementChanged(currentElement_);
 }
 
 void ElementEditorWidget::updateVisibility()

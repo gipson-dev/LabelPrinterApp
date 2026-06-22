@@ -54,4 +54,5 @@ private:
     QCheckBox* humanReadableCheck_ = nullptr;
     QSpinBox* qrMagnificationSpin_ = nullptr;
     std::string currentId_;
+    LabelElement currentElement_;
 };
