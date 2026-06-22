@@ -260,7 +260,7 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     }
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
     double scaleY = label.height() / safeLabelHeight(template_);
-    int pixelSize = std::max(18, static_cast<int>(element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
+    int pixelSize = std::max(12, static_cast<int>(element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
 
     QFont font("Arial");
     font.setPixelSize(pixelSize);
@@ -270,9 +270,8 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
 
     painter.save();
     painter.setFont(font);
-    painter.setPen(Qt::black);
     QFontMetrics metrics(font);
-    box.setHeight(std::max(box.height(), static_cast<double>(metrics.height() + 8)));
+    box.setHeight(std::max(box.height(), static_cast<double>(metrics.height() + 10)));
 
     int flags = Qt::AlignTop;
     if (element.alignment == TextAlignment::Center) flags |= Qt::AlignHCenter;
@@ -280,10 +279,12 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     else flags |= Qt::AlignLeft;
     if (element.wrap || element.multiLine) flags |= Qt::TextWordWrap;
 
-    QRectF textBox = box.adjusted(4, 2, -4, -2);
-    painter.drawText(textBox, flags, value);
     painter.setPen(QPen(selected ? QColor(0, 120, 215) : QColor(120, 148, 180), selected ? 2 : 1, selected ? Qt::SolidLine : Qt::DashLine));
     painter.drawRect(box);
+    painter.setClipRect(box.adjusted(2, 2, -2, -2));
+    painter.setPen(Qt::black);
+    QRectF textBox = box.adjusted(6, 4, -6, -4);
+    painter.drawText(textBox, flags, value.isEmpty() ? QStringLiteral("Text") : value);
     painter.restore();
 }
 
