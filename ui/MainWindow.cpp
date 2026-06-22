@@ -39,6 +39,7 @@
 #include "core/ZebraPrinter.h"
 #include "core/ZplGenerator.h"
 #include "ui/ElementEditorWidget.h"
+#include "ui/ExcelRecordsWidget.h"
 #include "ui/PreviewWidget.h"
 
 MainWindow::MainWindow(QWidget* parent)
@@ -263,34 +264,15 @@ QWidget* MainWindow::buildDataTab()
 {
     auto* tab = new QWidget(this);
     auto* layout = new QVBoxLayout(tab);
-
-    auto* sourceGroup = new QGroupBox("Data Source", tab);
-    auto* sourceLayout = new QVBoxLayout(sourceGroup);
-    sourceLayout->addWidget(new QRadioButton("Manual Entry", sourceGroup));
-    sourceLayout->addWidget(new QRadioButton("Prompt Before Print", sourceGroup));
-    sourceLayout->addWidget(new QRadioButton("Auto-Increment Serial Numbers", sourceGroup));
-    auto* csvRadio = new QRadioButton("CSV File", sourceGroup);
-    csvRadio->setChecked(true);
-    sourceLayout->addWidget(csvRadio);
-    layout->addWidget(sourceGroup);
-
-    csvTable_ = new QTableWidget(tab);
-    layout->addWidget(csvTable_, 1);
-
-    auto* buttons = new QHBoxLayout;
-    auto* importButton = new QPushButton("Import CSV", tab);
-    auto* mapButton = new QPushButton("Map Columns", tab);
-    auto* previewRecordButton = new QPushButton("Preview Record", tab);
-    buttons->addWidget(importButton);
-    buttons->addWidget(mapButton);
-    buttons->addWidget(previewRecordButton);
-    buttons->addStretch();
-    layout->addLayout(buttons);
-
-    connect(importButton, &QPushButton::clicked, this, &MainWindow::importCsv);
-    connect(mapButton, &QPushButton::clicked, this, &MainWindow::configureCsvMapping);
-    connect(previewRecordButton, &QPushButton::clicked, this, &MainWindow::previewSelectedCsvRecord);
-    connect(csvTable_, &QTableWidget::itemSelectionChanged, this, &MainWindow::previewSelectedCsvRecord);
+    excelRecords_ = new ExcelRecordsWidget(tab);
+    layout->addWidget(excelRecords_);
+    connect(excelRecords_, &ExcelRecordsWidget::previewRowRequested, this, [this](int row) {
+        preview_->setVariables(contextForRow(row));
+    });
+    connect(excelRecords_, &ExcelRecordsWidget::recordsChanged, this, [this] {
+        csvMappingOverrides_.clear();
+    });
+    connect(excelRecords_, &ExcelRecordsWidget::printSelectedRequested, this, &MainWindow::printSelectedCsvRows);
     return tab;
 }
 
@@ -784,32 +766,17 @@ void MainWindow::loadSelectedLibraryTemplate()
 
 void MainWindow::importCsv()
 {
-    QString path = QFileDialog::getOpenFileName(this, "Import CSV", "examples", "CSV (*.csv)");
-    if (path.isEmpty()) return;
-    csvData_ = CsvImporter::loadFile(path.toStdString(), true);
-    csvMappingOverrides_.clear();
-    csvTable_->clear();
-    csvTable_->setColumnCount(static_cast<int>(csvData_.headers.size()));
-    csvTable_->setRowCount(static_cast<int>(csvData_.rows.size()));
-    for (int c = 0; c < static_cast<int>(csvData_.headers.size()); ++c)
+    if (excelRecords_)
     {
-        csvTable_->setHorizontalHeaderItem(c, new QTableWidgetItem(QString::fromStdString(csvData_.headers[c])));
+        excelRecords_->loadFile();
     }
-    for (int r = 0; r < static_cast<int>(csvData_.rows.size()); ++r)
-    {
-        for (int c = 0; c < static_cast<int>(csvData_.rows[r].size()); ++c)
-        {
-            csvTable_->setItem(r, c, new QTableWidgetItem(QString::fromStdString(csvData_.rows[r][c])));
-        }
-    }
-    previewSelectedCsvRecord();
 }
 
 void MainWindow::configureCsvMapping()
 {
-    if (csvData_.headers.empty())
+    if (!excelRecords_ || excelRecords_->headers().empty())
     {
-        QMessageBox::information(this, "CSV Required", "Import a CSV file before mapping columns.");
+        QMessageBox::information(this, "Data Required", "Import an Excel or CSV file before mapping columns.");
         return;
     }
 
@@ -827,9 +794,9 @@ void MainWindow::configureCsvMapping()
     }
 
     QStringList headerChoices;
-    for (const std::string& header : csvData_.headers)
+    for (const QString& header : excelRecords_->headers())
     {
-        headerChoices << QString::fromStdString(header);
+        headerChoices << header;
     }
 
     for (const std::string& placeholder : placeholders)
@@ -864,33 +831,21 @@ void MainWindow::configureCsvMapping()
 
 void MainWindow::previewSelectedCsvRecord()
 {
-    if (csvData_.rows.empty())
+    if (!excelRecords_ || excelRecords_->records().records.empty())
     {
         preview_->setVariables({});
         return;
     }
-
-    int row = 0;
-    const auto selected = csvTable_->selectionModel() ? csvTable_->selectionModel()->selectedRows() : QModelIndexList{};
-    if (!selected.empty())
-    {
-        row = selected.front().row();
-    }
-    preview_->setVariables(contextForRow(row));
+    preview_->setVariables(contextForRow(0));
 }
 
 void MainWindow::previewZpl()
 {
     VariableContext context;
-    if (!csvData_.rows.empty())
+    if (excelRecords_ && !excelRecords_->records().records.empty())
     {
-        int row = 0;
-        const auto selected = csvTable_->selectionModel() ? csvTable_->selectionModel()->selectedRows() : QModelIndexList{};
-        if (!selected.empty())
-        {
-            row = selected.front().row();
-        }
-        context = contextForRow(row);
+        const QVector<int> rows = excelRecords_->printableSourceRows();
+        context = contextForRow(rows.isEmpty() ? 0 : rows.first());
     }
 
     auto* dialog = new QDialog(this);
@@ -941,17 +896,26 @@ void MainWindow::printCurrent()
 
 void MainWindow::printSelectedCsvRows()
 {
-    for (const QModelIndex& index : csvTable_->selectionModel()->selectedRows())
+    if (!excelRecords_)
     {
-        printContexts({contextForRow(index.row())}, copiesSpin_->value() * quantityForRow(index.row()));
+        return;
+    }
+    for (int row : excelRecords_->printableSourceRows())
+    {
+        printContexts({contextForRow(row)}, copiesSpin_->value() * excelRecords_->copiesForSourceRow(row));
     }
 }
 
 void MainWindow::printAllCsvRows()
 {
-    for (int row = 0; row < csvTable_->rowCount(); ++row)
+    if (!excelRecords_)
     {
-        printContexts({contextForRow(row)}, copiesSpin_->value() * quantityForRow(row));
+        return;
+    }
+    const ExcelRecordSet records = excelRecords_->records();
+    for (int row = 0; row < records.records.size(); ++row)
+    {
+        printContexts({contextForRow(row)}, copiesSpin_->value() * records.records[row].copies);
     }
 }
 
@@ -986,6 +950,28 @@ VariableContext MainWindow::contextForRow(int rowIndex) const
     VariableContext context;
     context.recordIndex = rowIndex + 1;
     context.serialNumber = serialStartSpin_->value() + rowIndex;
+    if (excelRecords_)
+    {
+        const ExcelRecordSet records = excelRecords_->records();
+        if (rowIndex >= 0 && rowIndex < records.records.size())
+        {
+            const ExcelRecord& record = records.records[rowIndex];
+            for (int column = 0; column < records.headers.size(); ++column)
+            {
+                context.values[records.headers[column].toStdString()] =
+                    column < record.values.size() ? record.values[column].toStdString() : std::string();
+            }
+            for (const auto& mapEntry : csvMappingOverrides_)
+            {
+                const int column = records.headers.indexOf(QString::fromStdString(mapEntry.second));
+                if (column >= 0 && column < record.values.size())
+                {
+                    context.values[mapEntry.first] = record.values[column].toStdString();
+                }
+            }
+        }
+        return context;
+    }
     std::map<std::string, std::string> mapping = csvMapping();
     context.values = csvData_.rowAsVariables(static_cast<std::size_t>(rowIndex), mapping);
     return context;
@@ -1027,10 +1013,22 @@ VariableContext MainWindow::promptContext() const
 std::map<std::string, std::string> MainWindow::csvMapping() const
 {
     std::map<std::string, std::string> mapping = csvMappingOverrides_;
+    QStringList excelHeaders;
+    if (excelRecords_)
+    {
+        excelHeaders = excelRecords_->headers();
+    }
     for (const LabelElement& element : labelTemplate_.elements)
     {
         if (!element.variableName.empty())
         {
+            for (const QString& header : excelHeaders)
+            {
+                if (header.toStdString() == element.variableName && mapping.find(element.variableName) == mapping.end())
+                {
+                    mapping[element.variableName] = header.toStdString();
+                }
+            }
             for (const std::string& header : csvData_.headers)
             {
                 if (header == element.variableName && mapping.find(element.variableName) == mapping.end())
@@ -1042,6 +1040,13 @@ std::map<std::string, std::string> MainWindow::csvMapping() const
 
         for (const auto& placeholder : VariableResolver::findPlaceholders(element.text))
         {
+            for (const QString& header : excelHeaders)
+            {
+                if (header.toStdString() == placeholder.first && mapping.find(placeholder.first) == mapping.end())
+                {
+                    mapping[placeholder.first] = header.toStdString();
+                }
+            }
             for (const std::string& header : csvData_.headers)
             {
                 if (header == placeholder.first && mapping.find(placeholder.first) == mapping.end())
@@ -1056,6 +1061,10 @@ std::map<std::string, std::string> MainWindow::csvMapping() const
 
 int MainWindow::quantityForRow(int rowIndex) const
 {
+    if (excelRecords_)
+    {
+        return excelRecords_->copiesForSourceRow(rowIndex);
+    }
     if (rowIndex < 0 || rowIndex >= static_cast<int>(csvData_.rows.size()))
     {
         return 1;

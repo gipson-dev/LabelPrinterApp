@@ -2,6 +2,9 @@
 
 ## 2026-06-22
 
+- Added an Excel database-style Data tab with `.xlsx`/CSV load, editable table records, print checkboxes, per-row copies, search, range selection, save/save-as, and label-template variable mapping from column headers.
+- Added modular Excel records classes: `ExcelImporter`, `ExcelTableModel`, `ExcelRecordsWidget`, and `RecordRangeParser`.
+- Added QXlsx FetchContent integration for workbook import/export in the Qt app.
 - Added Label Stock presets for Uline S-8599, Uline S-22422, Zebra 2.25 x 0.75 generic stock, and Zebra ZD620 4 x 2 stock.
 - Added automatic calculated dot-size display for the selected width, height, and DPI.
 - Reordered tabs to `Design | Elements | Data | Templates | Print | Settings` and moved stock/default-printer setup into Settings.

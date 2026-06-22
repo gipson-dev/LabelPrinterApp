@@ -17,6 +17,7 @@ class QSpinBox;
 class QTabWidget;
 
 class ElementEditorWidget;
+class ExcelRecordsWidget;
 class PreviewWidget;
 
 class MainWindow : public QMainWindow
@@ -99,5 +100,5 @@ private:
     QSpinBox* copiesSpin_ = nullptr;
     QSpinBox* serialStartSpin_ = nullptr;
     QSpinBox* serialEndSpin_ = nullptr;
-    QTableWidget* csvTable_ = nullptr;
+    ExcelRecordsWidget* excelRecords_ = nullptr;
 };

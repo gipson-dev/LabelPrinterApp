@@ -46,6 +46,22 @@ For 4" x 2" labels, the calculated printer size is:
 - 203 DPI: `812 x 406` dots
 - 300 DPI: `1200 x 600` dots
 
+## Excel Database Printing
+
+The Data tab is an editable records screen for `.xlsx` and `.csv` files. It includes:
+
+- `Load...`, `Save`, and `Save As...`
+- Search by any imported column
+- A row number column
+- A checkbox column to choose rows for printing
+- A `Copies` column with values from 1 to 999
+- Editable imported columns such as `{Order id}` and `{Name}`
+- A range box such as `1-*`, `1-10`, `5`, `2,4,6`, or `1-5,8,10-12`
+
+Checked rows that match the range are printed through the current label template. Imported headers become template variables, so an Excel column named `Order id` can be used as `{Order id}` in text, barcode, or QR fields.
+
+Use `examples\excel_records_sample.csv` as quick test data. `.xlsx` files are supported in app builds through QXlsx.
+
 ## Printing From CSV
 
 Use `examples\sample_items.csv` as a starting point:
@@ -88,6 +104,7 @@ Requirements:
 - Visual Studio 2022 or newer with Desktop development with C++
 - CMake 3.20 or newer
 - Qt 6 for MSVC 64-bit
+- Internet access on first configure if QXlsx has not already been fetched
 
 Set `CMAKE_PREFIX_PATH` to your Qt install folder:
 
@@ -97,6 +114,8 @@ $env:CMAKE_PREFIX_PATH = "C:\Qt\6.7.3\msvc2022_64"
 ```
 
 On this development machine, the script auto-detects `C:\Qt\6.8.3\msvc2022_64`, so the normal VS Code build task can run without extra arguments.
+
+`.xlsx` support is enabled by default with `LABELPRINTERAPP_ENABLE_XLSX=ON`. CMake fetches QXlsx automatically and links it into the Qt application.
 
 Or run CMake directly:
 

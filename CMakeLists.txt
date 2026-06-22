@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(LABELPRINTERAPP_FETCH_NLOHMANN "Fetch nlohmann/json when no package is installed" ON)
 option(LABELPRINTERAPP_BUILD_APP "Build the Qt desktop application" ON)
+option(LABELPRINTERAPP_ENABLE_XLSX "Enable .xlsx import/export through QXlsx" ON)
 
 find_package(nlohmann_json CONFIG QUIET)
 if (NOT nlohmann_json_FOUND AND LABELPRINTERAPP_FETCH_NLOHMANN)
@@ -32,15 +33,32 @@ set(CORE_SOURCES
 )
 
 set(UI_SOURCES
+    core/ExcelImporter.cpp
+    core/RecordRangeParser.cpp
     ui/MainWindow.cpp
     ui/PreviewWidget.cpp
     ui/ElementEditorWidget.cpp
+    ui/ExcelTableModel.cpp
+    ui/ExcelRecordsWidget.cpp
 )
 
 if (LABELPRINTERAPP_BUILD_APP)
     find_package(Qt6 QUIET COMPONENTS Widgets)
     if (NOT Qt6_FOUND)
         message(FATAL_ERROR "Qt 6 Widgets was not found. Install Qt 6 for MSVC and set CMAKE_PREFIX_PATH, for example: -DCMAKE_PREFIX_PATH=C:/Qt/6.7.3/msvc2022_64")
+    endif()
+
+    if (LABELPRINTERAPP_ENABLE_XLSX)
+        include(FetchContent)
+        FetchContent_Declare(
+            qxlsx
+            GIT_REPOSITORY https://github.com/QtExcel/QXlsx.git
+            GIT_TAG master
+        )
+        FetchContent_MakeAvailable(qxlsx)
+        if (NOT TARGET QXlsx::QXlsx AND NOT TARGET QXlsx)
+            add_subdirectory(${qxlsx_SOURCE_DIR}/QXlsx ${qxlsx_BINARY_DIR}/QXlsx)
+        endif()
     endif()
 
     add_executable(LabelPrinterApp WIN32
@@ -60,6 +78,15 @@ if (LABELPRINTERAPP_BUILD_APP)
         Qt6::Widgets
         nlohmann_json::nlohmann_json
     )
+    if (LABELPRINTERAPP_ENABLE_XLSX)
+        target_compile_definitions(LabelPrinterApp PRIVATE LABELPRINTERAPP_ENABLE_XLSX)
+        target_include_directories(LabelPrinterApp PRIVATE ${qxlsx_SOURCE_DIR}/QXlsx/header)
+        if (TARGET QXlsx::QXlsx)
+            target_link_libraries(LabelPrinterApp PRIVATE QXlsx::QXlsx)
+        elseif (TARGET QXlsx)
+            target_link_libraries(LabelPrinterApp PRIVATE QXlsx)
+        endif()
+    endif()
 
     add_custom_command(TARGET LabelPrinterApp POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
