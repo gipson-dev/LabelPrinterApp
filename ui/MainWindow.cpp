@@ -156,7 +156,7 @@ QWidget* MainWindow::buildDesignTab()
         toolboxLayout->addWidget(button);
         connect(button, &QPushButton::clicked, this, [this, type] { addElement(type); });
     };
-    addToolButton("Text", LabelElementType::Text);
+    addToolButton("Text / Number", LabelElementType::Text);
     addToolButton("Barcode", LabelElementType::Code128Barcode);
     addToolButton("QR Code", LabelElementType::QrCode);
     auto* dateButton = new QPushButton("Date/Time", toolbox);
@@ -169,6 +169,9 @@ QWidget* MainWindow::buildDesignTab()
             e.name = "Date Time";
             e.text = "{Date} {Time}";
             e.source = FieldSource::Fixed;
+            e.fontHeightDots = 36;
+            e.fontWidthDots = 28;
+            e.bold = false;
             refreshElementList();
             selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
             refreshPreview();
@@ -185,6 +188,9 @@ QWidget* MainWindow::buildDesignTab()
             e.text = "{Serial}";
             e.source = FieldSource::SerialNumber;
             e.serialWidth = 4;
+            e.fontHeightDots = 64;
+            e.fontWidthDots = 48;
+            e.bold = true;
             refreshElementList();
             selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
             refreshPreview();
@@ -514,6 +520,30 @@ void MainWindow::addElement(LabelElementType type)
     element.text = type == LabelElementType::Text ? "Text" : "{ItemNumber}";
     element.source = type == LabelElementType::Text ? FieldSource::Fixed : FieldSource::Variable;
     element.variableName = type == LabelElementType::Text ? "" : "ItemNumber";
+    if (type == LabelElementType::Text)
+    {
+        element.name = "Text / Number";
+        element.text = "Sample Text";
+        element.xInches = 0.16;
+        element.yInches = 0.12;
+        element.boxWidthInches = 1.85;
+        element.fontHeightDots = 62;
+        element.fontWidthDots = 46;
+        element.bold = true;
+    }
+    else if (type == LabelElementType::Code128Barcode || type == LabelElementType::Code39Barcode)
+    {
+        element.xInches = 0.28;
+        element.yInches = 0.36;
+        element.barcodeHeightDots = 54;
+        element.barcodeModuleWidth = 2;
+    }
+    else if (type == LabelElementType::QrCode)
+    {
+        element.xInches = 1.78;
+        element.yInches = 0.08;
+        element.qrMagnification = 4;
+    }
     labelTemplate_.elements.push_back(element);
     refreshElementList();
     selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));

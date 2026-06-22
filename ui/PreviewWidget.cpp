@@ -2,7 +2,9 @@
 
 #include <QMouseEvent>
 #include <QPainter>
+#include <QFontMetrics>
 #include <algorithm>
+#include <cmath>
 
 #include "core/VariableResolver.h"
 
@@ -39,6 +41,21 @@ void PreviewWidget::paintEvent(QPaintEvent*)
     painter.fillRect(rect(), QColor(238, 241, 245));
 
     QRectF label = labelRect();
+    painter.setPen(QPen(QColor(90, 90, 90), 1));
+    painter.drawText(QRectF(label.left(), label.top() - 24, label.width(), 18), Qt::AlignCenter,
+                     QString("%1\" x %2\"").arg(template_.settings.labelWidthInches, 0, 'f', 2).arg(template_.settings.labelHeightInches, 0, 'f', 2));
+    painter.setPen(QPen(QColor(140, 140, 140), 1));
+    for (double x = 0.0; x <= template_.settings.labelWidthInches + 0.001; x += 0.25)
+    {
+        const double wx = label.left() + x / template_.settings.labelWidthInches * label.width();
+        painter.drawLine(QPointF(wx, label.top() - 12), QPointF(wx, label.top() - (std::abs(std::fmod(x, 1.0)) < 0.001 ? 24 : 16)));
+    }
+    for (double y = 0.0; y <= template_.settings.labelHeightInches + 0.001; y += 0.25)
+    {
+        const double wy = label.top() + y / template_.settings.labelHeightInches * label.height();
+        painter.drawLine(QPointF(label.left() - 12, wy), QPointF(label.left() - (std::abs(std::fmod(y, 1.0)) < 0.001 ? 24 : 16), wy));
+    }
+
     painter.setPen(QPen(QColor(96, 110, 128), 2));
     painter.setBrush(Qt::white);
     painter.drawRoundedRect(label, 5, 5);
@@ -125,7 +142,7 @@ QRectF PreviewWidget::elementRect(const LabelElement& element, const QRectF& lab
         double width = std::max(36.0, element.boxWidthInches * scaleX);
         double lineHeight = std::max(14.0, element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY);
         int lines = element.wrap || element.multiLine ? element.maxLines : 1;
-        return QRectF(topLeft, QSizeF(width, lineHeight * lines + 4));
+        return QRectF(topLeft, QSizeF(width, lineHeight * lines + 12));
     }
 
     if (element.type == LabelElementType::QrCode)
@@ -207,7 +224,7 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     }
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
     double scaleY = label.height() / template_.settings.labelHeightInches;
-    int pixelSize = std::max(10, static_cast<int>(element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
+    int pixelSize = std::max(18, static_cast<int>(element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
 
     QFont font("Arial");
     font.setPixelSize(pixelSize);
@@ -218,6 +235,8 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     painter.save();
     painter.setFont(font);
     painter.setPen(Qt::black);
+    QFontMetrics metrics(font);
+    box.setHeight(std::max(box.height(), static_cast<double>(metrics.height() + 8)));
 
     int flags = Qt::AlignTop;
     if (element.alignment == TextAlignment::Center) flags |= Qt::AlignHCenter;
@@ -225,7 +244,7 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     else flags |= Qt::AlignLeft;
     if (element.wrap || element.multiLine) flags |= Qt::TextWordWrap;
 
-    QRectF textBox = box.adjusted(2, 0, -2, 0);
+    QRectF textBox = box.adjusted(4, 2, -4, -2);
     painter.drawText(textBox, flags, value);
     painter.setPen(QPen(selected ? QColor(0, 120, 215) : QColor(120, 148, 180), selected ? 2 : 1, selected ? Qt::SolidLine : Qt::DashLine));
     painter.drawRect(box);
