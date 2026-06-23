@@ -74,4 +74,5 @@ struct LabelElement
     int serialWidth = 0;
 
     bool doNotPrint = false;
+    bool locked = false;
 };

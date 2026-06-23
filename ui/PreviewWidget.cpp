@@ -220,6 +220,11 @@ void PreviewWidget::mousePressEvent(QMouseEvent* event)
     emit elementSelected(hit);
     if (hit >= 0)
     {
+        if (template_.elements[hit].locked)
+        {
+            update();
+            return;
+        }
         QRectF label = labelRect();
         QPointF labelPoint = widgetToLabel(event->position(), label);
         const LabelElement& element = template_.elements[hit];

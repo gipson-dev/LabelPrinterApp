@@ -6,11 +6,13 @@
 
 #include "core/LabelTemplate.h"
 
+class QString;
 class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
 class QLineEdit;
 class QSpinBox;
+class QWidget;
 
 class ElementEditorWidget : public QWidget
 {
@@ -21,6 +23,8 @@ public:
 
     void setElement(const LabelElement* element);
     LabelElement element() const;
+    QWidget* sectionWidget(const QString& sectionName) const;
+    void focusSection(const QString& sectionName);
 
 signals:
     void elementChanged(const LabelElement& element);

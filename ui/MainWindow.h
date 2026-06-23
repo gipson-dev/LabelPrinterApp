@@ -52,6 +52,15 @@ private:
     void duplicateSelectedElement();
     void deleteSelectedElement();
     void moveSelectedElement(int offset);
+    void moveSelectedElementToIndex(int targetIndex);
+    void alignSelectedLeft();
+    void alignSelectedCenter();
+    void alignSelectedRight();
+    void alignSelectedTop();
+    void alignSelectedMiddle();
+    void alignSelectedBottom();
+    void distributeElementsHorizontally();
+    void lockSelectedElement(bool locked);
     void saveTemplate();
     void loadTemplate();
     void loadTemplateFromPath(const QString& path);

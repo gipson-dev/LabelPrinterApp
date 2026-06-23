@@ -26,7 +26,6 @@
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStatusBar>
-#include <QStackedWidget>
 #include <QStyle>
 #include <QStringList>
 #include <QTabWidget>
@@ -46,6 +45,28 @@
 #include "ui/ElementEditorWidget.h"
 #include "ui/ExcelRecordsWidget.h"
 #include "ui/PreviewWidget.h"
+
+namespace
+{
+QSizeF estimatedElementSizeInches(const LabelTemplate& labelTemplate, const LabelElement& element)
+{
+    const double dpi = std::max(1, labelTemplate.settings.dpi);
+    if (element.type == LabelElementType::Text)
+    {
+        const int lines = element.wrap || element.multiLine ? std::max(1, element.maxLines) : 1;
+        return QSizeF(std::max(0.05, element.boxWidthInches), std::max(0.05, (element.fontHeightDots * lines + 12) / dpi));
+    }
+    if (element.type == LabelElementType::QrCode)
+    {
+        const double size = std::max(0.12, element.qrMagnification * 0.055);
+        return QSizeF(size, size);
+    }
+
+    const double width = std::max(0.25, static_cast<double>(std::max<std::size_t>(8, element.text.size())) * element.barcodeModuleWidth * 9.0 / dpi);
+    const double humanText = element.humanReadable ? std::max(0.05, element.barcodeHeightDots * 0.22 / dpi) : 0.0;
+    return QSizeF(width, std::max(0.12, element.barcodeHeightDots / dpi) + humanText);
+}
+}
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent),
@@ -178,11 +199,11 @@ void MainWindow::buildMenus()
     auto* layout = menuBar()->addMenu("Layout");
     edit->addAction("Move Up", this, [this] { moveSelectedElement(-1); });
     edit->addAction("Move Down", this, [this] { moveSelectedElement(1); });
-    layout->addAction("Bring Forward", this, [this] { moveSelectedElement(1); });
-    layout->addAction("Send Backward", this, [this] { moveSelectedElement(-1); });
-    layout->addAction("Align Left");
-    layout->addAction("Align Center");
-    layout->addAction("Align Right");
+    layout->addAction("Bring Forward", this, [this] { moveSelectedElementToIndex(static_cast<int>(labelTemplate_.elements.size()) - 1); });
+    layout->addAction("Send Backward", this, [this] { moveSelectedElementToIndex(0); });
+    layout->addAction("Align Left", this, &MainWindow::alignSelectedLeft);
+    layout->addAction("Align Center", this, &MainWindow::alignSelectedCenter);
+    layout->addAction("Align Right", this, &MainWindow::alignSelectedRight);
 
     auto* view = menuBar()->addMenu("View");
     view->addAction("Preview ZPL", this, &MainWindow::previewZpl);
@@ -241,13 +262,13 @@ void MainWindow::buildToolbar()
     toolbar->addAction("QR", this, [this] { addElement(LabelElementType::QrCode); });
     toolbar->addAction(style()->standardIcon(QStyle::SP_TrashIcon), "Delete", this, &MainWindow::deleteSelectedElement);
     toolbar->addSeparator();
-    toolbar->addAction("Front", this, [this] { moveSelectedElement(1); });
-    toolbar->addAction("Back", this, [this] { moveSelectedElement(-1); });
-    toolbar->addAction("L");
-    toolbar->addAction("C");
-    toolbar->addAction("R");
-    toolbar->addAction("Grid");
-    toolbar->addAction("Snap");
+    toolbar->addAction("Front", this, [this] { moveSelectedElementToIndex(static_cast<int>(labelTemplate_.elements.size()) - 1); });
+    toolbar->addAction("Back", this, [this] { moveSelectedElementToIndex(0); });
+    toolbar->addAction("L", this, &MainWindow::alignSelectedLeft);
+    toolbar->addAction("C", this, &MainWindow::alignSelectedCenter);
+    toolbar->addAction("R", this, &MainWindow::alignSelectedRight);
+    toolbar->addAction("Grid", this, [this] { statusBar()->showMessage("Grid is visible on the design canvas."); });
+    toolbar->addAction("Snap", this, [this] { statusBar()->showMessage("Snap uses the 0.25 inch design grid."); });
     toolbar->addSeparator();
     toolbar->addAction(style()->standardIcon(QStyle::SP_MessageBoxQuestion), "Help");
 
@@ -255,10 +276,17 @@ void MainWindow::buildToolbar()
     alignToolbar->setIconSize(QSize(16, 16));
     alignToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     addToolBar(Qt::BottomToolBarArea, alignToolbar);
-    for (const QString& text : {"Align left", "Align center", "Align right", "Align top", "Align middle", "Align bottom", "Equal spacing", "Bring forward", "Send backward", "Lock", "Unlock"})
-    {
-        alignToolbar->addAction(text);
-    }
+    alignToolbar->addAction("Align left", this, &MainWindow::alignSelectedLeft);
+    alignToolbar->addAction("Align center", this, &MainWindow::alignSelectedCenter);
+    alignToolbar->addAction("Align right", this, &MainWindow::alignSelectedRight);
+    alignToolbar->addAction("Align top", this, &MainWindow::alignSelectedTop);
+    alignToolbar->addAction("Align middle", this, &MainWindow::alignSelectedMiddle);
+    alignToolbar->addAction("Align bottom", this, &MainWindow::alignSelectedBottom);
+    alignToolbar->addAction("Equal spacing", this, &MainWindow::distributeElementsHorizontally);
+    alignToolbar->addAction("Bring forward", this, [this] { moveSelectedElementToIndex(static_cast<int>(labelTemplate_.elements.size()) - 1); });
+    alignToolbar->addAction("Send backward", this, [this] { moveSelectedElementToIndex(0); });
+    alignToolbar->addAction("Lock", this, [this] { lockSelectedElement(true); });
+    alignToolbar->addAction("Unlock", this, [this] { lockSelectedElement(false); });
 }
 
 QWidget* MainWindow::buildDesignTab()
@@ -369,7 +397,6 @@ QWidget* MainWindow::buildDesignTab()
     auto* tabGrid = new QGridLayout;
     tabGrid->setContentsMargins(0, 4, 0, 4);
     tabGrid->setSpacing(3);
-    auto* stack = new QStackedWidget(properties);
     const QStringList pageNames = {"Text", "Formatting", "Position", "Data", "Barcode", "Print"};
     QList<QPushButton*> pageButtons;
     for (int i = 0; i < pageNames.size(); ++i)
@@ -380,13 +407,6 @@ QWidget* MainWindow::buildDesignTab()
         button->setMinimumWidth(118);
         pageButtons << button;
         tabGrid->addWidget(button, i / 3, i % 3);
-        connect(button, &QPushButton::clicked, this, [stack, pageButtons, i] {
-            stack->setCurrentIndex(i);
-            for (int b = 0; b < pageButtons.size(); ++b)
-            {
-                pageButtons[b]->setChecked(b == i);
-            }
-        });
     }
     pageButtons.front()->setChecked(true);
     propertiesLayout->addLayout(tabGrid);
@@ -396,18 +416,24 @@ QWidget* MainWindow::buildDesignTab()
     editorScroll->setWidgetResizable(true);
     editorScroll->setFrameStyle(QFrame::NoFrame);
     editorScroll->setWidget(editor_);
-    stack->addWidget(editorScroll);
-    for (const QString& name : pageNames.mid(1))
+    for (int i = 0; i < pageButtons.size(); ++i)
     {
-        auto* placeholder = new QWidget(stack);
-        auto* placeholderLayout = new QVBoxLayout(placeholder);
-        auto* note = new QLabel(QString("The %1 section will use the selected element values shown on the Text page.").arg(name), placeholder);
-        note->setWordWrap(true);
-        placeholderLayout->addWidget(note);
-        placeholderLayout->addStretch();
-        stack->addWidget(placeholder);
+        QPushButton* button = pageButtons[i];
+        connect(button, &QPushButton::clicked, this, [this, pageButtons, pageNames, editorScroll, i] {
+            for (int b = 0; b < pageButtons.size(); ++b)
+            {
+                pageButtons[b]->setChecked(b == i);
+            }
+            const QString section = pageNames[i];
+            editor_->focusSection(section);
+            if (QWidget* target = editor_->sectionWidget(section))
+            {
+                editorScroll->ensureWidgetVisible(target, 0, 16);
+            }
+            statusBar()->showMessage(QString("%1 properties").arg(section));
+        });
     }
-    propertiesLayout->addWidget(stack, 1);
+    propertiesLayout->addWidget(editorScroll, 1);
 
     splitter->addWidget(toolbox);
     splitter->addWidget(preview_);
@@ -944,6 +970,142 @@ void MainWindow::moveSelectedElement(int offset)
     refreshElementList();
     selectElement(newIndex);
     refreshPreview();
+}
+
+void MainWindow::moveSelectedElementToIndex(int targetIndex)
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
+    {
+        return;
+    }
+    targetIndex = std::clamp(targetIndex, 0, static_cast<int>(labelTemplate_.elements.size()) - 1);
+    if (targetIndex == selectedElement_)
+    {
+        return;
+    }
+
+    LabelElement element = labelTemplate_.elements[selectedElement_];
+    labelTemplate_.elements.erase(labelTemplate_.elements.begin() + selectedElement_);
+    labelTemplate_.elements.insert(labelTemplate_.elements.begin() + targetIndex, element);
+    refreshElementList();
+    selectElement(targetIndex);
+    refreshPreview();
+    statusBar()->showMessage(targetIndex == 0 ? "Element sent backward." : "Element brought forward.");
+}
+
+void MainWindow::alignSelectedLeft()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
+    LabelElement& element = labelTemplate_.elements[selectedElement_];
+    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    element.xInches = 0.0;
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage("Element aligned left.");
+}
+
+void MainWindow::alignSelectedCenter()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
+    LabelElement& element = labelTemplate_.elements[selectedElement_];
+    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+    element.xInches = std::max(0.0, (labelTemplate_.settings.labelWidthInches - size.width()) / 2.0);
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage("Element aligned center.");
+}
+
+void MainWindow::alignSelectedRight()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
+    LabelElement& element = labelTemplate_.elements[selectedElement_];
+    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+    element.xInches = std::max(0.0, labelTemplate_.settings.labelWidthInches - size.width());
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage("Element aligned right.");
+}
+
+void MainWindow::alignSelectedTop()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
+    LabelElement& element = labelTemplate_.elements[selectedElement_];
+    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    element.yInches = 0.0;
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage("Element aligned top.");
+}
+
+void MainWindow::alignSelectedMiddle()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
+    LabelElement& element = labelTemplate_.elements[selectedElement_];
+    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+    element.yInches = std::max(0.0, (labelTemplate_.settings.labelHeightInches - size.height()) / 2.0);
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage("Element aligned middle.");
+}
+
+void MainWindow::alignSelectedBottom()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
+    LabelElement& element = labelTemplate_.elements[selectedElement_];
+    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+    element.yInches = std::max(0.0, labelTemplate_.settings.labelHeightInches - size.height());
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage("Element aligned bottom.");
+}
+
+void MainWindow::distributeElementsHorizontally()
+{
+    if (labelTemplate_.elements.size() < 3)
+    {
+        statusBar()->showMessage("Equal spacing needs at least three elements.");
+        return;
+    }
+
+    std::vector<int> indexes(labelTemplate_.elements.size());
+    for (int i = 0; i < static_cast<int>(indexes.size()); ++i)
+    {
+        indexes[i] = i;
+    }
+    std::sort(indexes.begin(), indexes.end(), [this](int a, int b) {
+        return labelTemplate_.elements[a].xInches < labelTemplate_.elements[b].xInches;
+    });
+
+    const double first = labelTemplate_.elements[indexes.front()].xInches;
+    const double last = labelTemplate_.elements[indexes.back()].xInches;
+    const double step = (last - first) / static_cast<double>(indexes.size() - 1);
+    for (int order = 1; order < static_cast<int>(indexes.size()) - 1; ++order)
+    {
+        LabelElement& element = labelTemplate_.elements[indexes[order]];
+        if (!element.locked)
+        {
+            element.xInches = first + step * order;
+        }
+    }
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage("Elements spaced evenly.");
+}
+
+void MainWindow::lockSelectedElement(bool locked)
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
+    {
+        return;
+    }
+    labelTemplate_.elements[selectedElement_].locked = locked;
+    selectElement(selectedElement_);
+    refreshPreview();
+    statusBar()->showMessage(locked ? "Element locked." : "Element unlocked.");
 }
 
 void MainWindow::saveTemplate()

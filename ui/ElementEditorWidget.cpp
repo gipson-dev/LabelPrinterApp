@@ -8,6 +8,7 @@
 #include <QLineEdit>
 #include <QSignalBlocker>
 #include <QSpinBox>
+#include <QTimer>
 #include <algorithm>
 #include <vector>
 
@@ -230,6 +231,28 @@ LabelElement ElementEditorWidget::element() const
     e.humanReadable = humanReadableCheck_->isChecked();
     e.qrMagnification = qrMagnificationSpin_->value();
     return e;
+}
+
+QWidget* ElementEditorWidget::sectionWidget(const QString& sectionName) const
+{
+    if (sectionName == "Formatting") return formattingChecksRow_;
+    if (sectionName == "Position") return xSpin_;
+    if (sectionName == "Data") return sourceCombo_;
+    if (sectionName == "Barcode") return barcodeHeightSpin_->isVisible() ? static_cast<QWidget*>(barcodeHeightSpin_) : static_cast<QWidget*>(qrMagnificationSpin_);
+    if (sectionName == "Print") return typeCombo_;
+    return textEdit_;
+}
+
+void ElementEditorWidget::focusSection(const QString& sectionName)
+{
+    QWidget* target = sectionWidget(sectionName);
+    if (!target)
+    {
+        return;
+    }
+    QTimer::singleShot(0, target, [target] {
+        target->setFocus(Qt::OtherFocusReason);
+    });
 }
 
 void ElementEditorWidget::emitChanged()

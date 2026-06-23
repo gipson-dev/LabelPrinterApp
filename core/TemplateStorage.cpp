@@ -112,7 +112,7 @@ namespace
             {"barcodeHeightDots", e.barcodeHeightDots}, {"barcodeModuleWidth", e.barcodeModuleWidth}, {"humanReadable", e.humanReadable},
             {"qrModel", e.qrModel}, {"qrMagnification", e.qrMagnification},
             {"serialStart", e.serialStart}, {"serialStep", e.serialStep}, {"serialWidth", e.serialWidth},
-            {"doNotPrint", e.doNotPrint}
+            {"doNotPrint", e.doNotPrint}, {"locked", e.locked}
         };
     }
 
@@ -151,6 +151,7 @@ namespace
         e.serialStep = j.value("serialStep", e.serialStep);
         e.serialWidth = j.value("serialWidth", e.serialWidth);
         e.doNotPrint = j.value("doNotPrint", e.doNotPrint);
+        e.locked = j.value("locked", e.locked);
         return e;
     }
 }

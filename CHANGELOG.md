@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Wired inspector section buttons to jump to the matching editor fields and connected layout toolbar actions for align, equal spacing, layer order, lock, and unlock.
 - Reworked the text formatting checkboxes into one horizontal Style row in the properties inspector.
 - Increased checkbox contrast in the properties inspector so Bold, Italic, Underline, Wrap, and Auto-fit states are easier to see.
 - Improved designer usability with readable left toolbox labels, brighter selection boxes and handles, a two-row inspector selector, wrapped property rows, scrollable property editing, and resizable design sections.
