@@ -2,17 +2,17 @@
 
 #include <QWidget>
 
+#include <QString>
 #include <string>
 
 #include "core/LabelTemplate.h"
 
-class QString;
 class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
+class QFormLayout;
 class QLineEdit;
 class QSpinBox;
-class QWidget;
 
 class ElementEditorWidget : public QWidget
 {
@@ -25,6 +25,7 @@ public:
     LabelElement element() const;
     QWidget* sectionWidget(const QString& sectionName) const;
     void focusSection(const QString& sectionName);
+    void showSection(const QString& sectionName);
 
 signals:
     void elementChanged(const LabelElement& element);
@@ -33,6 +34,8 @@ private:
     void emitChanged();
     void updateVisibility();
 
+    QFormLayout* form_ = nullptr;
+    QString activeSection_ = "Text";
     QLineEdit* nameEdit_ = nullptr;
     QComboBox* typeCombo_ = nullptr;
     QComboBox* sourceCombo_ = nullptr;
@@ -58,6 +61,8 @@ private:
     QSpinBox* moduleWidthSpin_ = nullptr;
     QCheckBox* humanReadableCheck_ = nullptr;
     QSpinBox* qrMagnificationSpin_ = nullptr;
+    QCheckBox* doNotPrintCheck_ = nullptr;
+    QCheckBox* lockedCheck_ = nullptr;
     std::string currentId_;
     LabelElement currentElement_;
 };

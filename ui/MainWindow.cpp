@@ -425,11 +425,12 @@ QWidget* MainWindow::buildDesignTab()
                 pageButtons[b]->setChecked(b == i);
             }
             const QString section = pageNames[i];
-            editor_->focusSection(section);
+            editor_->showSection(section);
             if (QWidget* target = editor_->sectionWidget(section))
             {
                 editorScroll->ensureWidgetVisible(target, 0, 16);
             }
+            editor_->focusSection(section);
             statusBar()->showMessage(QString("%1 properties").arg(section));
         });
     }
