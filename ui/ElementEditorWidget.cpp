@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLineEdit>
 #include <QSignalBlocker>
 #include <QSpinBox>
@@ -83,11 +84,20 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     }
     fontWidthSpin_ = new QSpinBox(this);
     fontWidthSpin_->setRange(8, 300);
+    formattingChecksRow_ = new QWidget(this);
+    auto* formattingChecksLayout = new QHBoxLayout(formattingChecksRow_);
+    formattingChecksLayout->setContentsMargins(0, 0, 0, 0);
+    formattingChecksLayout->setSpacing(12);
     boldCheck_ = new QCheckBox("Bold", this);
     italicCheck_ = new QCheckBox("Italic", this);
     underlineCheck_ = new QCheckBox("Underline", this);
     wrapCheck_ = new QCheckBox("Wrap", this);
     autoFitCheck_ = new QCheckBox("Auto-fit", this);
+    for (QCheckBox* check : {boldCheck_, italicCheck_, underlineCheck_, wrapCheck_, autoFitCheck_})
+    {
+        formattingChecksLayout->addWidget(check);
+    }
+    formattingChecksLayout->addStretch();
     maxLinesSpin_ = new QSpinBox(this);
     maxLinesSpin_->setRange(1, 12);
     alignmentCombo_ = new QComboBox(this);
@@ -114,11 +124,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     form->addRow("Box Width", boxWidthSpin_);
     form->addRow("Font Size", fontSizeCombo_);
     form->addRow("Font Width", fontWidthSpin_);
-    form->addRow(boldCheck_);
-    form->addRow(italicCheck_);
-    form->addRow(underlineCheck_);
-    form->addRow(wrapCheck_);
-    form->addRow(autoFitCheck_);
+    form->addRow("Style", formattingChecksRow_);
     form->addRow("Max Lines", maxLinesSpin_);
     form->addRow("Alignment", alignmentCombo_);
     form->addRow("Rotation", rotationCombo_);
@@ -242,11 +248,7 @@ void ElementEditorWidget::updateVisibility()
     const std::vector<QWidget*> textWidgets = {
         fontSizeCombo_,
         fontWidthSpin_,
-        boldCheck_,
-        italicCheck_,
-        underlineCheck_,
-        wrapCheck_,
-        autoFitCheck_,
+        formattingChecksRow_,
         maxLinesSpin_,
         alignmentCombo_
     };

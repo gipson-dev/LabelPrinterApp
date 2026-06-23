@@ -41,6 +41,7 @@ private:
     QDoubleSpinBox* boxWidthSpin_ = nullptr;
     QComboBox* fontSizeCombo_ = nullptr;
     QSpinBox* fontWidthSpin_ = nullptr;
+    QWidget* formattingChecksRow_ = nullptr;
     QCheckBox* boldCheck_ = nullptr;
     QCheckBox* italicCheck_ = nullptr;
     QCheckBox* underlineCheck_ = nullptr;
