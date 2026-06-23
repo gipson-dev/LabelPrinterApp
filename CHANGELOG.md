@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Restored native spinbox arrow rendering while keeping numeric fields tall enough for reliable increase/decrease clicks.
 - Fixed spinbox stepper hit areas so the increase arrows on numeric fields are clickable.
 - Updated all `docs/` files for the current architecture, classic designer UI, functional inspector pages, layout controls, packaging behavior, and current generated ZPL example.
 - Renamed the right-side inspector header to `Element Property Editor`.

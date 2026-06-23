@@ -77,6 +77,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
         spin->setDecimals(3);
         spin->setSingleStep(0.01);
         spin->setSuffix(" in");
+        spin->setMinimumHeight(24);
     }
     fontSizeCombo_ = new QComboBox(this);
     for (int size : {12, 16, 18, 22, 26, 30, 36, 44, 48, 56, 64, 72, 96})
@@ -85,6 +86,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     }
     fontWidthSpin_ = new QSpinBox(this);
     fontWidthSpin_->setRange(8, 300);
+    fontWidthSpin_->setMinimumHeight(24);
     formattingChecksRow_ = new QWidget(this);
     auto* formattingChecksLayout = new QHBoxLayout(formattingChecksRow_);
     formattingChecksLayout->setContentsMargins(0, 0, 0, 0);
@@ -101,17 +103,21 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     formattingChecksLayout->addStretch();
     maxLinesSpin_ = new QSpinBox(this);
     maxLinesSpin_->setRange(1, 12);
+    maxLinesSpin_->setMinimumHeight(24);
     alignmentCombo_ = new QComboBox(this);
     alignmentCombo_->addItems({"Left", "Center", "Right"});
     rotationCombo_ = new QComboBox(this);
     rotationCombo_->addItems({"0", "90", "180", "270"});
     barcodeHeightSpin_ = new QSpinBox(this);
     barcodeHeightSpin_->setRange(10, 500);
+    barcodeHeightSpin_->setMinimumHeight(24);
     moduleWidthSpin_ = new QSpinBox(this);
     moduleWidthSpin_->setRange(1, 10);
+    moduleWidthSpin_->setMinimumHeight(24);
     humanReadableCheck_ = new QCheckBox("Human-readable", this);
     qrMagnificationSpin_ = new QSpinBox(this);
     qrMagnificationSpin_->setRange(1, 10);
+    qrMagnificationSpin_->setMinimumHeight(24);
     doNotPrintCheck_ = new QCheckBox("Do not print", this);
     lockedCheck_ = new QCheckBox("Locked", this);
 
