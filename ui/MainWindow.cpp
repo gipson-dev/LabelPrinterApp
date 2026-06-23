@@ -390,7 +390,7 @@ QWidget* MainWindow::buildDesignTab()
     properties->setMaximumWidth(620);
     auto* propertiesLayout = new QVBoxLayout(properties);
     propertiesLayout->setContentsMargins(8, 8, 8, 8);
-    auto* appName = new QLabel("<b style='font-size:18px'>LabelPrinterApp</b><br><span style='color:#d46b1c'>Zebra Label Designer</span>", properties);
+    auto* appName = new QLabel("<b style='font-size:18px'>Element Property Editor</b>", properties);
     appName->setWordWrap(true);
     propertiesLayout->addWidget(appName);
 

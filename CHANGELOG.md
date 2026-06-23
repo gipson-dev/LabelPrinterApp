@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Renamed the right-side inspector header to `Element Property Editor`.
 - Changed the right-side inspector buttons into true filtered pages for Text, Formatting, Position, Data, Barcode, and Print, including visible Do not print and Locked controls.
 - Wired inspector section buttons to jump to the matching editor fields and connected layout toolbar actions for align, equal spacing, layer order, lock, and unlock.
 - Reworked the text formatting checkboxes into one horizontal Style row in the properties inspector.
