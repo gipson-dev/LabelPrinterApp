@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Increased checkbox contrast in the properties inspector so Bold, Italic, Underline, Wrap, and Auto-fit states are easier to see.
 - Improved designer usability with readable left toolbox labels, brighter selection boxes and handles, a two-row inspector selector, wrapped property rows, scrollable property editing, and resizable design sections.
 - Restyled the design workspace toward a classic LabelDirect/ZebraDesigner layout with a light theme, dense menus/toolbars, compact left tool palette, rulered canvas, dashed printable boundary, selection handles, inspector tabs, bottom alignment toolbar, and richer status bar.
 - Fixed database printing so checked Excel/CSV rows print their own field values instead of repeating a fixed sample item number from the active template.
