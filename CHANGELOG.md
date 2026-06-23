@@ -2,6 +2,8 @@
 
 ## 2026-06-22
 
+- Regenerated bundled templates into two clear test-template sets for 2.25 x 0.75 and 4 x 2 label stock, using `TEST LABEL`, `Test description`, and `TEST-001` style sample values.
+- Updated sample CSV files to use matching test label data.
 - Restored reliable increase-arrow clicks on numeric fields by leaving spinbox button rendering to the native Qt/Windows control and applying sizing in code instead of the global stylesheet.
 - Added persistent app settings with load-on-startup, save-on-close, manual Save App Settings, and Reset App Settings actions for printer, stock, label setup, print options, active tab, and window layout.
 - Restored native spinbox arrow rendering while keeping numeric fields tall enough for reliable increase/decrease clicks.

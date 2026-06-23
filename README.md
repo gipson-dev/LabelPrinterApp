@@ -83,7 +83,7 @@ Use `examples\sample_items.csv` as a starting point:
 
 ```csv
 ItemNumber,Description,Lot,Quantity
-226026-K-003,"Direct thermal removable label",LOT-K003,2
+TEST-001,"Test description",TEST-LOT-001,2
 ```
 
 In the app:
@@ -104,12 +104,12 @@ ITEM {ItemNumber}
 
 The default template is [templates/default_label.json](templates/default_label.json). It includes:
 
-- A title with `226026-K-003`
-- A description field for a removable adhesive label
-- A Code 128 barcode encoding `226026-K-003`
-- A QR code with the item, lot, and date
+- A title with `TEST LABEL`
+- A description field with `Test description`
+- A Code 128 barcode encoding `TEST-001`
+- A QR code with test label data
 
-The `templates/` folder also includes ready-made samples for inventory labels, shelf/bin labels, QR asset tags, serial-number labels, price labels, mini shipping labels, and a photo-inspired work center dispatch label. Open the `Templates` tab and double-click a template to load it. The bundled barcode templates use Code 128 for inventory-style values such as `226026-K-003`.
+The `templates/` folder includes two template sets: one for 2.25 x 0.75 inch labels and one for Zebra ZD620-style 4 x 2 inch labels. Open the `Templates` tab and double-click a template to load it. The bundled barcode templates use test values such as `TEST-001`, `TEST-002`, and `TEST-003` so sample prints are clearly marked as test labels.
 
 ## Building From Source
 

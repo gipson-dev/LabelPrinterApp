@@ -1,4 +1,4 @@
 Order id,Name,ItemNumber,Description,Lot
-1001,Database school 2,226026-K-003,Echo Studio Kit,LOT-K003
-1002,Database school 2,226026-K-004,Direct Thermal Removable Label,LOT-K004
-1003,Database school 2,226026-K-005,Work Center Dispatch Label,LOT-K005
+1001,Test Customer,TEST-001,Test description,TEST-LOT-001
+1002,Test Customer,TEST-002,Second test description,TEST-LOT-002
+1003,Test Customer,TEST-003,Third test description,TEST-LOT-003

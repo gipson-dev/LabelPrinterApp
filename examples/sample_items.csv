@@ -1,4 +1,4 @@
 ItemNumber,Description,Lot,Quantity
-226026-K-003,"Direct thermal removable label",LOT-K003,2
-226026-K-004,"Direct thermal removable label",LOT-K004,1
-226026-K-005,"Removable adhesive test",LOT-K005,3
+TEST-001,"Test description",TEST-LOT-001,2
+TEST-002,"Second test description",TEST-LOT-002,1
+TEST-003,"Third test description",TEST-LOT-003,3

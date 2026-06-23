@@ -89,3 +89,5 @@ The default preset is Uline S-8599 2.25 x 0.75 direct thermal stock.
 - 300 DPI: `675 x 225` dots
 
 The Settings tab also includes Uline S-22422, Zebra 2.25 x 0.75 generic, and Zebra ZD620 4 x 2 direct thermal presets.
+
+The bundled Templates tab content is split into 2.25 x 0.75 and 4 x 2 test-template sets. The samples use obvious values such as `TEST LABEL`, `Test description`, and `TEST-001` so test prints cannot be mistaken for real production labels.

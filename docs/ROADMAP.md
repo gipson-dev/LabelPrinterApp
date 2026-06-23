@@ -32,6 +32,7 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 - Functional bottom layout controls: align, equal spacing, bring forward, send backward, lock, and unlock.
 - Excel/CSV Data tab with load/save, editable rows, print checkboxes, copies, search, row ranges, and placeholder mapping.
 - Stock presets for Uline S-8599, Uline S-22422, Zebra 2.25 x 0.75 generic, and Zebra ZD620 4 x 2.
+- Bundled test template sets for both 2.25 x 0.75 and 4 x 2 label stock.
 - Persistent app settings for the selected printer, stock, DPI, label setup, print options, active tab, and window layout.
 - Release package output under `dist\LabelPrinterApp`.
 

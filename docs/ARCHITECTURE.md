@@ -27,7 +27,9 @@ LabelPrinterApp/
 |   |-- ExcelTableModel.h/.cpp
 |   `-- ExcelRecordsWidget.h/.cpp
 |-- templates/
-|   `-- default_label.json
+|   |-- default_label.json
+|   |-- *_2_25x0_75.json
+|   `-- *_4x2.json
 |-- examples/
 |   |-- sample_items.csv
 |   `-- excel_records_sample.csv
@@ -136,7 +138,7 @@ The package is written to `dist\LabelPrinterApp`. Close any running copy of `dis
 3. Choose a stock preset such as `Uline S-8599 - 2.25" x 0.75" Direct Thermal`.
 4. Match the DPI to the printer, usually 203 or 300.
 5. Use `Print Test Label` first.
-6. Load `examples\sample_items.csv` or `examples\excel_records_sample.csv` from the Data tab for variable database printing.
+6. Load `examples\sample_items.csv` or `examples\excel_records_sample.csv` from the Data tab for variable database printing. These sample files use `TEST-001`, `Test description`, and related test values.
 7. Print one label and verify alignment before printing a batch.
 
 For 2.25 x 0.75 stock, expected dot sizes are `457 x 152` at 203 DPI and `675 x 225` at 300 DPI.
