@@ -1,6 +1,7 @@
 #include "ui/MainWindow.h"
 
 #include <QCheckBox>
+#include <QCloseEvent>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -22,6 +23,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QSpinBox>
 #include <QSplitter>
@@ -75,6 +77,13 @@ MainWindow::MainWindow(QWidget* parent)
     buildUi();
     loadDefaultTemplate();
     refreshPrinterList();
+    loadAppSettings();
+}
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    saveAppSettings();
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::buildUi()
@@ -225,6 +234,8 @@ void MainWindow::buildMenus()
 
     auto* preferences = menuBar()->addMenu("Preferences");
     preferences->addAction("Settings", this, [this] { tabs_->setCurrentIndex(5); });
+    preferences->addAction("Save App Settings", this, &MainWindow::saveAppSettings);
+    preferences->addAction("Reset App Settings", this, &MainWindow::resetAppSettings);
 
     auto* templates = menuBar()->addMenu("Templates");
     templates->addAction("Load Template", this, &MainWindow::loadTemplate);
@@ -609,9 +620,9 @@ QWidget* MainWindow::buildSettingsTab()
     layout->addStretch();
 
     connect(saveButton, &QPushButton::clicked, this, [this] {
-        QMessageBox::information(this, "Settings", "Persistent application settings will be added in the final polish phase.");
+        saveAppSettings();
     });
-    connect(resetButton, &QPushButton::clicked, this, &MainWindow::newTemplate);
+    connect(resetButton, &QPushButton::clicked, this, &MainWindow::resetAppSettings);
     return tab;
 }
 
@@ -759,6 +770,93 @@ void MainWindow::updateStatusSummary()
                                  .arg(s.labelWidthDots())
                                  .arg(s.labelHeightDots()));
     statusZoomLabel_->setText("Zoom 167%");
+}
+
+void MainWindow::loadAppSettings()
+{
+    QSettings settings("LabelPrinterApp", "LabelPrinterApp");
+    restoreGeometry(settings.value("window/geometry").toByteArray());
+    restoreState(settings.value("window/state").toByteArray());
+
+    PrinterSettings& printerSettings = labelTemplate_.settings;
+    printerSettings.printerName = settings.value("printer/name", QString::fromStdString(printerSettings.printerName)).toString().toStdString();
+    printerSettings.dpi = settings.value("printer/dpi", printerSettings.dpi).toInt();
+    printerSettings.labelWidthInches = settings.value("label/widthInches", printerSettings.labelWidthInches).toDouble();
+    printerSettings.labelHeightInches = settings.value("label/heightInches", printerSettings.labelHeightInches).toDouble();
+    printerSettings.marginLeftInches = settings.value("label/marginLeftInches", printerSettings.marginLeftInches).toDouble();
+    printerSettings.marginTopInches = settings.value("label/marginTopInches", printerSettings.marginTopInches).toDouble();
+    printerSettings.gapInches = settings.value("label/gapInches", printerSettings.gapInches).toDouble();
+    printerSettings.mediaSensing = static_cast<MediaSensingMode>(std::clamp(settings.value("label/mediaSensing", static_cast<int>(printerSettings.mediaSensing)).toInt(), 0, 2));
+    printerSettings.orientation = static_cast<LabelOrientation>(std::clamp(settings.value("label/orientation", static_cast<int>(printerSettings.orientation)).toInt(), 0, 1));
+    printerSettings.speedIps = settings.value("printer/speedIps", printerSettings.speedIps).toInt();
+    printerSettings.darkness = settings.value("printer/darkness", printerSettings.darkness).toInt();
+    printerSettings.copies = settings.value("print/copies", printerSettings.copies).toInt();
+
+    refreshSettingsControls();
+    const int savedPreset = settings.value("label/stockPreset", stockPresetCombo_ ? stockPresetCombo_->currentIndex() : 0).toInt();
+    if (stockPresetCombo_ && savedPreset >= 0 && savedPreset < stockPresetCombo_->count())
+    {
+        QSignalBlocker blocker(stockPresetCombo_);
+        stockPresetCombo_->setCurrentIndex(savedPreset);
+    }
+
+    if (printMethodCombo_)
+    {
+        printMethodCombo_->setCurrentIndex(std::clamp(settings.value("label/printMethod", printMethodCombo_->currentIndex()).toInt(), 0, printMethodCombo_->count() - 1));
+    }
+    if (coreSizeCombo_)
+    {
+        coreSizeCombo_->setCurrentIndex(std::clamp(settings.value("label/coreSize", coreSizeCombo_->currentIndex()).toInt(), 0, coreSizeCombo_->count() - 1));
+    }
+    if (tabs_)
+    {
+        tabs_->setCurrentIndex(std::clamp(settings.value("window/activeTab", tabs_->currentIndex()).toInt(), 0, tabs_->count() - 1));
+    }
+    refreshPreview();
+    statusBar()->showMessage("App settings loaded.");
+}
+
+void MainWindow::saveAppSettings()
+{
+    updateTemplateFromSettings();
+    QSettings settings("LabelPrinterApp", "LabelPrinterApp");
+    const PrinterSettings& printerSettings = labelTemplate_.settings;
+    settings.setValue("window/geometry", saveGeometry());
+    settings.setValue("window/state", saveState());
+    settings.setValue("window/activeTab", tabs_ ? tabs_->currentIndex() : 0);
+    settings.setValue("printer/name", QString::fromStdString(printerSettings.printerName));
+    settings.setValue("printer/dpi", printerSettings.dpi);
+    settings.setValue("printer/speedIps", printerSettings.speedIps);
+    settings.setValue("printer/darkness", printerSettings.darkness);
+    settings.setValue("print/copies", printerSettings.copies);
+    settings.setValue("label/stockPreset", stockPresetCombo_ ? stockPresetCombo_->currentIndex() : 0);
+    settings.setValue("label/widthInches", printerSettings.labelWidthInches);
+    settings.setValue("label/heightInches", printerSettings.labelHeightInches);
+    settings.setValue("label/marginLeftInches", printerSettings.marginLeftInches);
+    settings.setValue("label/marginTopInches", printerSettings.marginTopInches);
+    settings.setValue("label/gapInches", printerSettings.gapInches);
+    settings.setValue("label/mediaSensing", static_cast<int>(printerSettings.mediaSensing));
+    settings.setValue("label/orientation", static_cast<int>(printerSettings.orientation));
+    settings.setValue("label/printMethod", printMethodCombo_ ? printMethodCombo_->currentIndex() : 0);
+    settings.setValue("label/coreSize", coreSizeCombo_ ? coreSizeCombo_->currentIndex() : 0);
+    settings.sync();
+    statusBar()->showMessage("App settings saved.");
+}
+
+void MainWindow::resetAppSettings()
+{
+    QSettings settings("LabelPrinterApp", "LabelPrinterApp");
+    settings.clear();
+    settings.sync();
+
+    loadDefaultTemplate();
+    refreshPrinterList();
+    resize(1280, 760);
+    if (tabs_)
+    {
+        tabs_->setCurrentIndex(0);
+    }
+    statusBar()->showMessage("App settings reset to defaults.");
 }
 
 void MainWindow::refreshPrinterList()

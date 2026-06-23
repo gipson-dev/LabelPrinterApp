@@ -79,6 +79,7 @@ The filtered page design prevents the old long property list from making the pag
   - Bring forward/send backward for layer order
   - Lock/unlock
 - Toolbar layout actions mirror the bottom toolbar where practical.
+- Preferences and Settings actions can save the current app setup or reset saved app settings. Startup reloads the saved printer, stock, DPI, label setup, active tab, and window layout.
 
 ## Stock And Preview Notes
 

@@ -23,7 +23,7 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 | 17 | Packaging as EXE | Complete | `scripts/package-release.ps1` builds and deploys `dist\LabelPrinterApp` with Qt runtime files through `windeployqt` when available. |
 | 18 | GitHub and releases | Complete for foundation | GitHub Actions builds/tests and packages Windows artifacts for release workflows. Main branch is kept updated. |
 | 19 | Testing and calibration | Started | Core tests cover ZPL, CSV, variables, serial ranges, and template storage. Manual printer calibration notes remain next. |
-| 20 | Final polish | In progress | Classic UI polish, readable controls, functional inspector pages, layout controls, and package rebuilds are ongoing. |
+| 20 | Final polish | In progress | Classic UI polish, readable controls, functional inspector pages, layout controls, persistent app settings, and package rebuilds are ongoing. |
 
 ## Current Completed Highlights
 
@@ -32,12 +32,13 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 - Functional bottom layout controls: align, equal spacing, bring forward, send backward, lock, and unlock.
 - Excel/CSV Data tab with load/save, editable rows, print checkboxes, copies, search, row ranges, and placeholder mapping.
 - Stock presets for Uline S-8599, Uline S-22422, Zebra 2.25 x 0.75 generic, and Zebra ZD620 4 x 2.
+- Persistent app settings for the selected printer, stock, DPI, label setup, print options, active tab, and window layout.
 - Release package output under `dist\LabelPrinterApp`.
 
 ## Next Order
 
 1. Add printer calibration notes and test labels for 203 DPI and 300 DPI media.
 2. Add manual QA checklists for property-page editing, layout toolbar actions, CSV printing, and printer setup.
-3. Add persistent app settings so selected printer, stock, DPI, and window layout survive restarts.
-4. Add persistent print history storage.
-5. Continue designer polish with resize handles, optional snap-to-grid behavior, and image/logo support.
+3. Add persistent print history storage.
+4. Continue designer polish with resize handles, optional snap-to-grid behavior, and image/logo support.
+5. Add deeper manual printer calibration workflow for multiple Zebra models.

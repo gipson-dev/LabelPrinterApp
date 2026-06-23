@@ -8,6 +8,7 @@
 #include "core/VariableResolver.h"
 
 class QComboBox;
+class QCloseEvent;
 class QDoubleSpinBox;
 class QLabel;
 class QLineEdit;
@@ -27,6 +28,9 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget* parent = nullptr);
 
+protected:
+    void closeEvent(QCloseEvent* event) override;
+
 private:
     void buildUi();
     void buildMenus();
@@ -41,6 +45,9 @@ private:
     void applyStockPreset(int index);
     void updateCalculatedSizeLabels();
     void updateStatusSummary();
+    void loadAppSettings();
+    void saveAppSettings();
+    void resetAppSettings();
     void refreshPrinterList();
     void refreshElementList();
     void refreshTemplateLibrary();

@@ -55,7 +55,7 @@ LabelPrinterApp/
 
 ## UI Classes
 
-- `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, database printing, and raw print commands.
+- `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, and raw print commands.
 - `PreviewWidget` paints the classic designer canvas with rulers, grid, label boundary, printable margin, text/barcode/QR previews, selection handles, cursor coordinates, and drag-to-move positioning. Locked elements cannot be dragged.
 - `ElementEditorWidget` is the right-side `Element Property Editor`. Its section buttons are true filtered pages:
   - `Text`: name, type, and element text
@@ -78,6 +78,12 @@ The Design tab uses a classic label-designer layout:
   - Equal horizontal spacing for three or more elements
   - Bring forward and send backward for layer order
   - Lock and unlock selected elements
+
+## Persistent App Settings
+
+The main window uses Qt `QSettings` with the `LabelPrinterApp/LabelPrinterApp` organization/application keys. Settings are loaded after the default template and printer list are initialized, saved automatically on close, and can be saved or reset from the Preferences menu and Settings tab.
+
+Persisted values include the window geometry/state, active tab, selected printer, DPI, stock preset, label dimensions, margins, gap, media sensing, orientation, print method, core size, speed, darkness, and copies. Template layout remains template-driven JSON so user label designs can still be saved and shared separately.
 
 ## Version Coverage
 

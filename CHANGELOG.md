@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Added persistent app settings with load-on-startup, save-on-close, manual Save App Settings, and Reset App Settings actions for printer, stock, label setup, print options, active tab, and window layout.
 - Restored native spinbox arrow rendering while keeping numeric fields tall enough for reliable increase/decrease clicks.
 - Fixed spinbox stepper hit areas so the increase arrows on numeric fields are clickable.
 - Updated all `docs/` files for the current architecture, classic designer UI, functional inspector pages, layout controls, packaging behavior, and current generated ZPL example.

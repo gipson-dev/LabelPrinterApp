@@ -15,6 +15,7 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Print one label, a serial-number range, selected CSV rows, or every CSV row.
 - Use a CSV `Quantity` or `Qty` column to print more than one label per row.
 - Save and load label templates as JSON.
+- Save and reset app settings so the selected printer, stock preset, label setup, active tab, and window layout survive restarts.
 
 ## Quick Start
 
@@ -23,8 +24,22 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 3. Open LabelPrinterApp.
 4. Open the Settings tab and select your Zebra printer from the Default Printer list. Click `Refresh` if it was just plugged in or installed.
 5. Pick a Label Stock preset, such as `Uline S-8599 - 2.25" x 0.75" Direct Thermal`.
-6. Edit the label fields or drag items in the preview.
-7. Print one test label before printing a batch.
+6. Click `Save Settings` if you want this printer and stock setup to load automatically next time.
+7. Edit the label fields or drag items in the preview.
+8. Print one test label before printing a batch.
+
+## App Settings
+
+LabelPrinterApp automatically loads saved app settings at startup and saves them again when the app closes. You can also use `Preferences > Save App Settings` or the Settings tab's `Save Settings` button at any time.
+
+Saved settings include:
+
+- Window size, position, splitter layout, and active tab
+- Default printer
+- Label stock preset, width, height, margins, gap, media sensing, orientation, and DPI
+- Print method, core size, speed, darkness, and copies
+
+Use `Preferences > Reset App Settings` or `Reset Defaults` in the Settings tab to clear saved app settings and return to the bundled default label setup.
 
 ## Label Stock Presets
 
