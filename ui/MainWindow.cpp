@@ -102,7 +102,7 @@ void MainWindow::buildUi()
         "QPushButton#InspectorTabButton:checked { background: #ffffff; border: 1px solid #6f9ed6; }"
         "QGroupBox { border: 1px solid #8f8f8f; margin-top: 10px; background: #eeeeee; }"
         "QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 3px; }"
-        "QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { background: #ffffff; border: 1px solid #9f9f9f; min-height: 24px; }"
+        "QLineEdit, QComboBox, QTextEdit { background: #ffffff; border: 1px solid #9f9f9f; min-height: 24px; }"
         "QCheckBox { spacing: 7px; min-height: 22px; }"
         "QCheckBox::indicator { width: 15px; height: 15px; background: #ffffff; border: 2px solid #555555; }"
         "QCheckBox::indicator:hover { border: 2px solid #0054be; }"
@@ -530,6 +530,10 @@ QWidget* MainWindow::buildPrintTab()
     serialEndSpin_ = new QSpinBox(job);
     serialEndSpin_->setRange(0, 999999999);
     serialEndSpin_->setValue(1);
+    for (QSpinBox* spin : {copiesSpin_, serialStartSpin_, serialEndSpin_})
+    {
+        spin->setMinimumHeight(24);
+    }
     jobLayout->addRow("Copies", copiesSpin_);
     jobLayout->addRow("Serial Start", serialStartSpin_);
     jobLayout->addRow("Serial End", serialEndSpin_);
@@ -653,6 +657,7 @@ QWidget* MainWindow::buildPrinterSettingsPanel(QWidget* parent)
         spin->setDecimals(3);
         spin->setSuffix(" in");
         spin->setSingleStep(0.01);
+        spin->setMinimumHeight(24);
     }
     widthSpin_->setRange(0.1, 10.0);
     heightSpin_->setRange(0.1, 10.0);
@@ -673,6 +678,10 @@ QWidget* MainWindow::buildPrinterSettingsPanel(QWidget* parent)
     speedSpin_->setRange(1, 14);
     darknessSpin_ = new QSpinBox(group);
     darknessSpin_->setRange(0, 30);
+    for (QSpinBox* spin : {speedSpin_, darknessSpin_})
+    {
+        spin->setMinimumHeight(24);
+    }
     settingsLayout->addRow("Preset", stockPresetCombo_);
     auto* printerRow = new QWidget(group);
     auto* printerRowLayout = new QHBoxLayout(printerRow);

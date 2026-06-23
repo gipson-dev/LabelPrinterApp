@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Restored reliable increase-arrow clicks on numeric fields by leaving spinbox button rendering to the native Qt/Windows control and applying sizing in code instead of the global stylesheet.
 - Added persistent app settings with load-on-startup, save-on-close, manual Save App Settings, and Reset App Settings actions for printer, stock, label setup, print options, active tab, and window layout.
 - Restored native spinbox arrow rendering while keeping numeric fields tall enough for reliable increase/decrease clicks.
 - Fixed spinbox stepper hit areas so the increase arrows on numeric fields are clickable.
