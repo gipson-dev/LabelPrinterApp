@@ -15,6 +15,7 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Use placeholders like `{ItemNumber}`, `{Lot}`, `{Date}`, `{Time}`, `{Serial}`, and `{RecordIndex}`.
 - Print one label, a serial-number range, selected CSV rows, or every CSV row.
 - Use a CSV `Quantity` or `Qty` column to print more than one label per row.
+- Log successful and failed print jobs to `logs\print_history.csv`.
 - Save and load label templates as JSON.
 - Save and reset app settings so the selected printer, stock preset, label setup, active tab, and window layout survive restarts.
 
@@ -152,6 +153,13 @@ Build a distributable folder:
 
 The package is written to `dist\LabelPrinterApp`. If `windeployqt.exe` is available, the Qt runtime files are copied automatically.
 
+The package script also creates beta distribution artifacts:
+
+- `dist\LabelPrinterApp_Portable.zip`
+- `dist\LabelPrinterApp_Setup.exe`, when Windows `iexpress.exe` is available
+
+The setup EXE is a simple beta installer that extracts the portable ZIP to the user's local app data folder, creates a desktop shortcut, and starts the app.
+
 ## Developer Notes
 
 - Core label logic lives in `core/`.
@@ -159,4 +167,6 @@ The package is written to `dist\LabelPrinterApp`. If `windeployqt.exe` is availa
 - Example generated ZPL is in [docs/example_generated.zpl](docs/example_generated.zpl).
 - Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Classic UI redesign notes are in [docs/UI_REDESIGN.md](docs/UI_REDESIGN.md).
+- Manual QA checklist is in [docs/MANUAL_QA_CHECKLIST.md](docs/MANUAL_QA_CHECKLIST.md).
+- Printer calibration notes are in [docs/PRINTER_CALIBRATION.md](docs/PRINTER_CALIBRATION.md).
 - The phase roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md).

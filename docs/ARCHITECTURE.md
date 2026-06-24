@@ -35,9 +35,13 @@ LabelPrinterApp/
 |   `-- excel_records_sample.csv
 |-- docs/
 |   |-- ARCHITECTURE.md
+|   |-- MANUAL_QA_CHECKLIST.md
+|   |-- PRINTER_CALIBRATION.md
 |   |-- ROADMAP.md
 |   |-- UI_REDESIGN.md
 |   `-- example_generated.zpl
+|-- logs/
+|   `-- print_history.csv
 `-- tests/
     `-- model_zpl_tests.cpp
 ```
@@ -67,6 +71,16 @@ LabelPrinterApp/
   - `Barcode`: barcode height, module width, human-readable toggle, or QR magnification
   - `Print`: do-not-print and locked flags
 - `ExcelRecordsWidget` is the Data tab table for loading, editing, filtering, selecting, and printing imported records.
+
+## Print History
+
+Print attempts append to `logs\print_history.csv`. The file is created automatically with these columns:
+
+```text
+Timestamp,Printer,Template,Mode,Rows,Copies,Success,Message
+```
+
+The first version is intentionally simple. It logs successful and failed print sends, including missing-printer failures, without adding a UI browser yet.
 
 ## Designer Controls
 
@@ -130,6 +144,13 @@ Create a distributable folder:
 ```
 
 The package is written to `dist\LabelPrinterApp`. Close any running copy of `dist\LabelPrinterApp\LabelPrinterApp.exe` before packaging so Windows can replace Qt DLLs.
+
+The package script also writes:
+
+- `dist\LabelPrinterApp_Portable.zip`
+- `dist\LabelPrinterApp_Setup.exe`, when `iexpress.exe` is available
+
+The setup EXE is a beta convenience wrapper around the portable ZIP.
 
 ## Test Printing
 

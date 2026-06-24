@@ -2,6 +2,9 @@
 
 ## 2026-06-22
 
+- Added `docs/MANUAL_QA_CHECKLIST.md` and `docs/PRINTER_CALIBRATION.md`.
+- Added persistent CSV print history at `logs\print_history.csv` for successful and failed print jobs.
+- Updated packaging to create `LabelPrinterApp_Portable.zip` and a beta `LabelPrinterApp_Setup.exe` when `iexpress.exe` is available.
 - Made Landscape the default label orientation for stock/templates and added working Grid and Snap toolbar toggles, including app-settings persistence and 0.25 inch snap-to-grid movement.
 - Regenerated bundled templates into two clear test-template sets for 2.25 x 0.75 and 4 x 2 label stock, using `TEST LABEL`, `Test description`, and `TEST-001` style sample values.
 - Updated sample CSV files to use matching test label data.

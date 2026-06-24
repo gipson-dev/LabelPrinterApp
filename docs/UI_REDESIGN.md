@@ -82,6 +82,7 @@ The filtered page design prevents the old long property list from making the pag
   - Lock/unlock
 - Toolbar layout actions mirror the bottom toolbar where practical.
 - Preferences and Settings actions can save the current app setup or reset saved app settings. Startup reloads the saved printer, stock, DPI, label setup, grid/snap toggles, active tab, and window layout.
+- Print actions append simple success/failure history to `logs\print_history.csv`.
 
 ## Stock And Preview Notes
 

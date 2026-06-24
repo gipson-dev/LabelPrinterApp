@@ -16,7 +16,7 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 | 10 | Template manager | Complete | Template tab loads bundled JSON templates and supports saving changes. |
 | 11 | Printer settings | Complete | Installed-printer selector, refresh button, DPI, dimensions, margins, gap, sensing mode, orientation, speed, darkness, copies, and stock presets. |
 | 12 | Error handling | Complete for foundation | User-facing save/print errors, template fallback handling, printer-required checks, and status-bar messages. |
-| 13 | Print history | Deferred | In-memory history existed in an earlier phase; persistent history remains a later polish item. |
+| 13 | Print history | Complete for foundation | Persistent CSV print history logs successful and failed jobs to `logs\print_history.csv`. |
 | 14 | Batch printing | Complete | Copies, serial ranges, checked Excel/CSV rows, all rows, row ranges, and quantity-per-row printing. |
 | 15 | Advanced formatting | Complete for foundation | Font size dropdown, font width, bold, italic, underline, rotation, alignment, wrapping, multi-line, fixed/variable text, prefix/suffix, and auto-fit metadata. |
 | 16 | Drag-and-drop designer | Complete for foundation | Preview supports drag-to-move, selection handles, layer order, align buttons, equal spacing, and lock/unlock. Full resize handles and snap toggles remain future polish. |
@@ -35,12 +35,13 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 - Stock presets for Uline S-8599, Uline S-22422, Zebra 2.25 x 0.75 generic, and Zebra ZD620 4 x 2.
 - Bundled test template sets for both 2.25 x 0.75 and 4 x 2 label stock.
 - Persistent app settings for the selected printer, stock, DPI, label setup, print options, active tab, and window layout.
+- Persistent CSV print history for successful and failed print jobs.
 - Release package output under `dist\LabelPrinterApp`.
 
 ## Next Order
 
-1. Add printer calibration notes and test labels for 203 DPI and 300 DPI media.
-2. Add manual QA checklists for property-page editing, layout toolbar actions, CSV printing, and printer setup.
-3. Add persistent print history storage.
-4. Continue designer polish with resize handles, optional snap-to-grid behavior, and image/logo support.
-5. Add deeper manual printer calibration workflow for multiple Zebra models.
+1. Run the manual QA checklist against the beta package on a clean Windows machine.
+2. Run printer calibration checks on 203 DPI and 300 DPI media.
+3. Continue designer polish with resize handles and image/logo support.
+4. Add a print history viewer/export screen.
+5. Add a fuller installer if beta setup requirements grow beyond the current IExpress wrapper.

@@ -89,7 +89,8 @@ private:
     VariableContext promptContext() const;
     std::map<std::string, std::string> csvMapping() const;
     int quantityForRow(int rowIndex) const;
-    void printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext);
+    void printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext, const QString& mode);
+    void logPrintHistory(const QString& mode, int rows, int copies, bool success, const QString& message) const;
 
     LabelTemplate labelTemplate_;
     CsvData csvData_;

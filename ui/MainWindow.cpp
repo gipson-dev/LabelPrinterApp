@@ -8,6 +8,8 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDoubleSpinBox>
+#include <QDateTime>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -35,6 +37,7 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextEdit>
+#include <QTextStream>
 #include <QToolBar>
 #include <QVBoxLayout>
 
@@ -1410,7 +1413,7 @@ void MainWindow::printTestLabel()
     context.values["Description"] = "Test Label";
     context.values["Lot"] = "LOT-TEST";
     context.serialNumber = serialStartSpin_->value();
-    printContexts({context}, 1);
+    printContexts({context}, 1, "Test Label");
 }
 
 void MainWindow::printCurrent()
@@ -1434,11 +1437,11 @@ void MainWindow::printCurrent()
             context.serialNumber = serial;
             contexts.push_back(context);
         }
-        printContexts(contexts, copiesSpin_->value());
+        printContexts(contexts, copiesSpin_->value(), "Serial Range");
         return;
     }
 
-    printContexts({promptContext()}, copiesSpin_->value());
+    printContexts({promptContext()}, copiesSpin_->value(), "Current Label");
 }
 
 void MainWindow::printSelectedCsvRows()
@@ -1449,7 +1452,7 @@ void MainWindow::printSelectedCsvRows()
     }
     for (int row : excelRecords_->printableSourceRows())
     {
-        printContexts({contextForRow(row)}, copiesSpin_->value() * excelRecords_->copiesForSourceRow(row));
+        printContexts({contextForRow(row)}, copiesSpin_->value() * excelRecords_->copiesForSourceRow(row), "Selected CSV Row");
     }
 }
 
@@ -1462,7 +1465,7 @@ void MainWindow::printAllCsvRows()
     const ExcelRecordSet records = excelRecords_->records();
     for (int row = 0; row < records.records.size(); ++row)
     {
-        printContexts({contextForRow(row)}, copiesSpin_->value() * records.records[row].copies);
+        printContexts({contextForRow(row)}, copiesSpin_->value() * records.records[row].copies, "All CSV Row");
     }
 }
 
@@ -1638,16 +1641,19 @@ int MainWindow::quantityForRow(int rowIndex) const
     return ok ? std::max(1, quantity) : 1;
 }
 
-void MainWindow::printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext)
+void MainWindow::printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext, const QString& mode)
 {
     if (printerCombo_->currentText().isEmpty())
     {
+        logPrintHistory(mode, static_cast<int>(contexts.size()), quantityPerContext, false, "No printer selected");
         QMessageBox::warning(this, "Printer Required", "Select a Windows printer first.");
         return;
     }
 
     std::string printer = printerCombo_->currentText().toStdString();
     std::string error;
+    const int rows = static_cast<int>(contexts.size());
+    const int copies = rows * std::max(1, quantityPerContext);
     for (const VariableContext& context : contexts)
     {
         std::string zpl = ZplGenerator::generate(labelTemplate_, context);
@@ -1655,10 +1661,42 @@ void MainWindow::printContexts(const std::vector<VariableContext>& contexts, int
         {
             if (!ZebraPrinter::printRawZpl(printer, zpl, error))
             {
+                logPrintHistory(mode, rows, copies, false, QString::fromStdString(error));
                 QMessageBox::critical(this, "Print Failed", QString::fromStdString(error));
                 return;
             }
         }
     }
+    logPrintHistory(mode, rows, copies, true, "Print job sent");
     statusBar()->showMessage("Print job sent.");
+}
+
+void MainWindow::logPrintHistory(const QString& mode, int rows, int copies, bool success, const QString& message) const
+{
+    QDir().mkpath("logs");
+    QFile file("logs/print_history.csv");
+    const bool needsHeader = !file.exists() || file.size() == 0;
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
+    {
+        return;
+    }
+
+    auto csv = [](QString value) {
+        value.replace("\"", "\"\"");
+        return QString("\"%1\"").arg(value);
+    };
+
+    QTextStream out(&file);
+    if (needsHeader)
+    {
+        out << "Timestamp,Printer,Template,Mode,Rows,Copies,Success,Message\n";
+    }
+    out << csv(QDateTime::currentDateTime().toString(Qt::ISODate)) << ','
+        << csv(printerCombo_ ? printerCombo_->currentText() : QString()) << ','
+        << csv(QString::fromStdString(labelTemplate_.name)) << ','
+        << csv(mode) << ','
+        << rows << ','
+        << copies << ','
+        << (success ? "true" : "false") << ','
+        << csv(message) << '\n';
 }
