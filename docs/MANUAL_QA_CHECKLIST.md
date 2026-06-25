@@ -47,6 +47,8 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Confirm the element can be dragged again.
 - [ ] Enable Do not print for an element.
 - [ ] Preview ZPL and confirm that element is excluded.
+- [ ] Click `Quick Print` in the Element Property Editor.
+- [ ] Confirm it sends the current label through the same print path as the Print tab.
 
 ## Data And Printing
 

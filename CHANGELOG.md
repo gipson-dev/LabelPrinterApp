@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Added a bottom-right `Quick Print` button to the Element Property Editor.
 - Added a Design-tab `Canvas Template` selector so blank canvas sizes can be loaded directly from the designer.
 - Added visible `Tool Palette` and `Layout Tools` section labels to clarify the left design tools and bottom layout toolbar.
 - Changed bundled templates to blank starting templates for 2.25 x 0.75 and 4 x 2 label stock.

@@ -68,6 +68,7 @@ The right-side header reads `Element Property Editor`. The section buttons are f
 - `Print`: do-not-print and locked toggles.
 
 The filtered page design prevents the old long property list from making the page buttons look inactive.
+The bottom-right `Quick Print` button sends the current label to the selected printer from the Design tab.
 
 ## Designer Behavior
 

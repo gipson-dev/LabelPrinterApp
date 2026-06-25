@@ -106,6 +106,7 @@ void MainWindow::buildUi()
         "QLabel#ToolboxSectionLabel { border-bottom: 1px solid #b8b8b8; margin-bottom: 3px; }"
         "QLabel#ToolbarSectionLabel { min-width: 78px; }"
         "QComboBox#CanvasTemplateCombo { min-height: 24px; }"
+        "QPushButton#QuickPrintButton { font-weight: 600; min-height: 28px; padding: 4px 14px; }"
         "QPushButton#InspectorTabButton { text-align: center; padding: 4px 6px; min-height: 24px; }"
         "QPushButton#InspectorTabButton:checked { background: #ffffff; border: 1px solid #6f9ed6; }"
         "QGroupBox { border: 1px solid #8f8f8f; margin-top: 10px; background: #eeeeee; }"
@@ -487,6 +488,15 @@ QWidget* MainWindow::buildDesignTab()
         });
     }
     propertiesLayout->addWidget(editorScroll, 1);
+    auto* quickPrintRow = new QHBoxLayout;
+    quickPrintRow->setContentsMargins(0, 6, 0, 0);
+    quickPrintRow->addStretch();
+    auto* quickPrintButton = new QPushButton("Quick Print", properties);
+    quickPrintButton->setObjectName("QuickPrintButton");
+    quickPrintButton->setToolTip("Print the current label from the designer");
+    quickPrintRow->addWidget(quickPrintButton);
+    propertiesLayout->addLayout(quickPrintRow);
+    connect(quickPrintButton, &QPushButton::clicked, this, &MainWindow::printCurrent);
 
     splitter->addWidget(toolbox);
     splitter->addWidget(preview_);

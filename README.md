@@ -10,6 +10,7 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Add text, Code 128 barcodes, Code 39 barcodes, and QR codes.
 - Move label items by dragging them in the preview.
 - Show or hide the design grid and enable snap-to-grid placement from the toolbar.
+- Use `Quick Print` from the Element Property Editor to print without leaving the Design tab.
 - Work in focused tabs for Design, Elements, Data, Print, Templates, and Settings.
 - Edit font size from a preset dropdown, plus bold, italic, underline, rotation, alignment, wrapping, margins, gap, darkness, speed, and copies.
 - Use placeholders like `{ItemNumber}`, `{Lot}`, `{Date}`, `{Time}`, `{Serial}`, and `{RecordIndex}`.
