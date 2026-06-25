@@ -2,6 +2,10 @@
 
 ## 2026-06-22
 
+- Added selected-element resize handles so side and corner anchors can adjust text width/font height, barcode width/height, and QR size directly on the design canvas.
+- Expanded text font size choices above 72 dots and auto-expands text width/font width when font size increases.
+- Standardized CSV import/export samples and new label fields around two columns: `Number` and `Description`; added dedicated Number and Description element buttons that bind to CSV data or prompt for user input when no CSV row is active.
+- Improved imported CSV printing diagnostics: blank templates now stop with a clear warning instead of sending invisible ZPL, and `{Column Name}` placeholders with spaces now resolve from imported CSV/Excel headers.
 - Fixed the Data tab `Print Selected Records` button so imported Excel/CSV rows print when they are checked in the Print column or highlighted in the table.
 - Added a bottom-right `Quick Print` button to the Element Property Editor.
 - Added a Design-tab `Canvas Template` selector so blank canvas sizes can be loaded directly from the designer.

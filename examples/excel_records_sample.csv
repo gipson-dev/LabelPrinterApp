@@ -1,4 +1,4 @@
-Order id,Name,ItemNumber,Description,Lot
-1001,Test Customer,TEST-001,Test description,TEST-LOT-001
-1002,Test Customer,TEST-002,Second test description,TEST-LOT-002
-1003,Test Customer,TEST-003,Third test description,TEST-LOT-003
+Number,Description
+1001,Test description
+1002,Second test description
+1003,Third test description

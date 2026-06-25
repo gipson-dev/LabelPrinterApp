@@ -42,6 +42,7 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <cmath>
 #include <set>
 
 #include "core/TemplateStorage.h"
@@ -71,6 +72,22 @@ QSizeF estimatedElementSizeInches(const LabelTemplate& labelTemplate, const Labe
     const double width = std::max(0.25, static_cast<double>(std::max<std::size_t>(8, element.text.size())) * element.barcodeModuleWidth * 9.0 / dpi);
     const double humanText = element.humanReadable ? std::max(0.05, element.barcodeHeightDots * 0.22 / dpi) : 0.0;
     return QSizeF(width, std::max(0.12, element.barcodeHeightDots / dpi) + humanText);
+}
+
+bool hasPrintableElements(const LabelTemplate& labelTemplate)
+{
+    return std::any_of(labelTemplate.elements.begin(), labelTemplate.elements.end(), [](const LabelElement& element) {
+        return !element.doNotPrint;
+    });
+}
+
+double minimumReadableTextWidthInches(const LabelTemplate& labelTemplate, const LabelElement& element)
+{
+    const int dpi = std::max(1, labelTemplate.settings.dpi);
+    std::string sample = element.text.empty() ? element.name : element.text;
+    sample = VariableResolver::resolveText(sample, VariableContext{});
+    const std::size_t longestLine = std::max<std::size_t>(1, sample.size());
+    return std::clamp((static_cast<double>(longestLine) * element.fontWidthDots * 0.58 + 12.0) / dpi, 0.18, labelTemplate.settings.labelWidthInches);
 }
 }
 
@@ -150,10 +167,17 @@ void MainWindow::buildUi()
     connect(editor_, &ElementEditorWidget::elementChanged, this, [this](const LabelElement& element) {
         if (selectedElement_ >= 0 && selectedElement_ < static_cast<int>(labelTemplate_.elements.size()))
         {
-            labelTemplate_.elements[selectedElement_] = element;
+            const LabelElement previous = labelTemplate_.elements[selectedElement_];
+            LabelElement updated = element;
+            if (updated.type == LabelElementType::Text && updated.fontHeightDots != previous.fontHeightDots)
+            {
+                updated.fontWidthDots = std::max(updated.fontWidthDots, static_cast<int>(std::round(updated.fontHeightDots * 0.78)));
+                updated.boxWidthInches = std::max(updated.boxWidthInches, minimumReadableTextWidthInches(labelTemplate_, updated));
+            }
+            labelTemplate_.elements[selectedElement_] = updated;
             if (auto* item = elementList_->item(selectedElement_))
             {
-                item->setText(QString::fromStdString(element.name));
+                item->setText(QString::fromStdString(updated.name));
             }
             refreshPreview();
         }
@@ -170,6 +194,14 @@ void MainWindow::buildUi()
         {
             labelTemplate_.elements[index].xInches = x;
             labelTemplate_.elements[index].yInches = y;
+            selectElement(index);
+            refreshPreview();
+        }
+    });
+    connect(preview_, &PreviewWidget::elementChanged, this, [this](int index, const LabelElement& element) {
+        if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()))
+        {
+            labelTemplate_.elements[index] = element;
             selectElement(index);
             refreshPreview();
         }
@@ -373,8 +405,19 @@ QWidget* MainWindow::buildDesignTab()
     selectButton->setToolTip("Select pointer");
     selectButton->setMinimumWidth(100);
     toolboxLayout->addWidget(selectButton);
-    addToolButton("Text", "Text tool", LabelElementType::Text);
-    addToolButton("Number", "Number / serial tool", LabelElementType::Text);
+    addToolButton("Text", "Manual text tool", LabelElementType::Text);
+    auto* numberButton = new QPushButton("Number", toolbox);
+    numberButton->setObjectName("ToolboxButton");
+    numberButton->setToolTip("Number field from CSV, or prompt/user input when no CSV row is active");
+    numberButton->setMinimumWidth(100);
+    toolboxLayout->addWidget(numberButton);
+    connect(numberButton, &QPushButton::clicked, this, &MainWindow::addNumberElement);
+    auto* descriptionButton = new QPushButton("Description", toolbox);
+    descriptionButton->setObjectName("ToolboxButton");
+    descriptionButton->setToolTip("Description field from CSV, or prompt/user input when no CSV row is active");
+    descriptionButton->setMinimumWidth(100);
+    toolboxLayout->addWidget(descriptionButton);
+    connect(descriptionButton, &QPushButton::clicked, this, &MainWindow::addDescriptionElement);
     addToolButton("Barcode", "Barcode tool", LabelElementType::Code128Barcode);
     addToolButton("QR Code", "QR code tool", LabelElementType::QrCode);
     auto* dateButton = new QPushButton("Date/Time", toolbox);
@@ -521,12 +564,16 @@ QWidget* MainWindow::buildElementsTab()
     listLayout->addWidget(elementList_);
 
     auto* buttons = new QHBoxLayout;
-    auto* addButton = new QPushButton("Add", listGroup);
+    auto* addButton = new QPushButton("Add Text", listGroup);
+    auto* addNumberButton = new QPushButton("Add Number", listGroup);
+    auto* addDescriptionButton = new QPushButton("Add Description", listGroup);
     auto* duplicateButton = new QPushButton("Duplicate", listGroup);
     auto* deleteButton = new QPushButton("Delete", listGroup);
     auto* upButton = new QPushButton("Move Up", listGroup);
     auto* downButton = new QPushButton("Move Down", listGroup);
     buttons->addWidget(addButton);
+    buttons->addWidget(addNumberButton);
+    buttons->addWidget(addDescriptionButton);
     buttons->addWidget(duplicateButton);
     buttons->addWidget(deleteButton);
     buttons->addWidget(upButton);
@@ -534,6 +581,8 @@ QWidget* MainWindow::buildElementsTab()
     listLayout->addLayout(buttons);
 
     connect(addButton, &QPushButton::clicked, this, [this] { addElement(LabelElementType::Text); });
+    connect(addNumberButton, &QPushButton::clicked, this, &MainWindow::addNumberElement);
+    connect(addDescriptionButton, &QPushButton::clicked, this, &MainWindow::addDescriptionElement);
     connect(duplicateButton, &QPushButton::clicked, this, &MainWindow::duplicateSelectedElement);
     connect(deleteButton, &QPushButton::clicked, this, &MainWindow::deleteSelectedElement);
     connect(upButton, &QPushButton::clicked, this, [this] { moveSelectedElement(-1); });
@@ -1105,9 +1154,9 @@ void MainWindow::addElement(LabelElementType type)
     element.type = type;
     element.name = type == LabelElementType::Text ? "Text" : (type == LabelElementType::QrCode ? "QR Code" : "Barcode");
     element.id = element.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
-    element.text = type == LabelElementType::Text ? "Text" : "{ItemNumber}";
+    element.text = type == LabelElementType::Text ? "Text" : "{Number}";
     element.source = type == LabelElementType::Text ? FieldSource::Fixed : FieldSource::Variable;
-    element.variableName = type == LabelElementType::Text ? "" : "ItemNumber";
+    element.variableName = type == LabelElementType::Text ? "" : "Number";
     if (type == LabelElementType::Text)
     {
         element.name = "Text / Number";
@@ -1130,9 +1179,55 @@ void MainWindow::addElement(LabelElementType type)
     {
         element.xInches = 1.78;
         element.yInches = 0.08;
-        element.text = "ITEM:{ItemNumber}";
+        element.text = "NUMBER:{Number}";
         element.qrMagnification = 4;
     }
+    labelTemplate_.elements.push_back(element);
+    refreshElementList();
+    selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
+    refreshPreview();
+}
+
+void MainWindow::addNumberElement()
+{
+    LabelElement element;
+    element.type = LabelElementType::Text;
+    element.name = "Number";
+    element.id = element.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
+    element.text = "{Number}";
+    element.source = FieldSource::Variable;
+    element.variableName = "Number";
+    element.xInches = 0.08;
+    element.yInches = 0.05;
+    element.boxWidthInches = 1.35;
+    element.fontHeightDots = 54;
+    element.fontWidthDots = 40;
+    element.bold = true;
+    element.autoFit = true;
+    labelTemplate_.elements.push_back(element);
+    refreshElementList();
+    selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
+    refreshPreview();
+}
+
+void MainWindow::addDescriptionElement()
+{
+    LabelElement element;
+    element.type = LabelElementType::Text;
+    element.name = "Description";
+    element.id = element.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
+    element.text = "{Description}";
+    element.source = FieldSource::Variable;
+    element.variableName = "Description";
+    element.xInches = 0.08;
+    element.yInches = 0.28;
+    element.boxWidthInches = 1.7;
+    element.fontHeightDots = 26;
+    element.fontWidthDots = 22;
+    element.wrap = true;
+    element.multiLine = true;
+    element.maxLines = 2;
+    element.autoFit = true;
     labelTemplate_.elements.push_back(element);
     refreshElementList();
     selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
@@ -1481,9 +1576,8 @@ void MainWindow::previewZpl()
 void MainWindow::printTestLabel()
 {
     VariableContext context;
-    context.values["ItemNumber"] = "TEST-123";
-    context.values["Description"] = "Test Label";
-    context.values["Lot"] = "LOT-TEST";
+    context.values["Number"] = "TEST-123";
+    context.values["Description"] = "Test description";
     context.serialNumber = serialStartSpin_->value();
     printContexts({context}, 1, "Test Label");
 }
@@ -1553,7 +1647,10 @@ void MainWindow::printSelectedCsvRows()
         {
             continue;
         }
-        printContexts({contextForRow(row)}, copiesSpin_->value() * excelRecords_->copiesForSourceRow(row), "Selected CSV Row");
+        if (!printContexts({contextForRow(row)}, copiesSpin_->value() * excelRecords_->copiesForSourceRow(row), "Selected CSV Row"))
+        {
+            return;
+        }
         ++printedRows;
     }
     if (printedRows > 0)
@@ -1571,7 +1668,10 @@ void MainWindow::printAllCsvRows()
     const ExcelRecordSet records = excelRecords_->records();
     for (int row = 0; row < records.records.size(); ++row)
     {
-        printContexts({contextForRow(row)}, copiesSpin_->value() * records.records[row].copies, "All CSV Row");
+        if (!printContexts({contextForRow(row)}, copiesSpin_->value() * records.records[row].copies, "All CSV Row"))
+        {
+            return;
+        }
     }
 }
 
@@ -1747,13 +1847,23 @@ int MainWindow::quantityForRow(int rowIndex) const
     return ok ? std::max(1, quantity) : 1;
 }
 
-void MainWindow::printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext, const QString& mode)
+bool MainWindow::printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext, const QString& mode)
 {
+    if (!hasPrintableElements(labelTemplate_))
+    {
+        logPrintHistory(mode, static_cast<int>(contexts.size()), quantityPerContext, false, "Current label template has no printable elements");
+        QMessageBox::warning(
+            this,
+            "Blank Label Template",
+            "The current label template has no printable elements. Add text, barcode, or QR fields on the Design tab, or load a template before printing imported records.");
+        return false;
+    }
+
     if (printerCombo_->currentText().isEmpty())
     {
         logPrintHistory(mode, static_cast<int>(contexts.size()), quantityPerContext, false, "No printer selected");
         QMessageBox::warning(this, "Printer Required", "Select a Windows printer first.");
-        return;
+        return false;
     }
 
     std::string printer = printerCombo_->currentText().toStdString();
@@ -1769,12 +1879,13 @@ void MainWindow::printContexts(const std::vector<VariableContext>& contexts, int
             {
                 logPrintHistory(mode, rows, copies, false, QString::fromStdString(error));
                 QMessageBox::critical(this, "Print Failed", QString::fromStdString(error));
-                return;
+                return false;
             }
         }
     }
     logPrintHistory(mode, rows, copies, true, "Print job sent");
     statusBar()->showMessage("Print job sent.");
+    return true;
 }
 
 void MainWindow::logPrintHistory(const QString& mode, int rows, int copies, bool success, const QString& message) const

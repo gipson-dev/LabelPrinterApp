@@ -33,10 +33,14 @@ Use this checklist before tagging or publishing a beta/release build.
 
 - [ ] Add a text element.
 - [ ] Edit the text to `QA TEXT`.
+- [ ] Select the text element and drag side/corner anchors to resize it.
+- [ ] Increase the text font size above 72 dots and confirm the text box width grows when needed.
 - [ ] Add a Code 128 barcode.
 - [ ] Set the barcode value to `QA-001`.
+- [ ] Select the barcode and drag side/corner anchors to change its width/height.
 - [ ] Add a QR code.
 - [ ] Set the QR value to `QA QR TEST`.
+- [ ] Select the QR code and drag side/corner anchors to resize it.
 - [ ] Move elements by dragging in the preview.
 - [ ] Toggle `Grid` off and confirm the grid hides.
 - [ ] Toggle `Grid` on and confirm the grid shows.
@@ -62,7 +66,7 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Confirm the highlighted imported row prints.
 - [ ] Click `Print All CSV`.
 - [ ] Confirm all rows print.
-- [ ] Confirm the `Quantity` column prints multiple copies when enabled.
+- [ ] Confirm `Number` and `Description` fields from the imported CSV appear in the label preview/ZPL.
 - [ ] Click `Preview ZPL`.
 - [ ] Confirm ZPL opens and uses the selected template and entered QA values.
 - [ ] Click `Print Test Label`.

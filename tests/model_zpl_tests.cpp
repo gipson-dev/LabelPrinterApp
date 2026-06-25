@@ -103,11 +103,18 @@ namespace
         context.serialNumber = 17;
         context.recordIndex = 3;
         context.values["ItemNumber"] = "A100";
+        context.values["Number"] = "A100";
+        context.values["Description"] = "Bracket";
 
         assert(VariableResolver::elementValue(element, context) == "SN-00017-A");
         assert(VariableResolver::resolveText("{ItemNumber}-{Serial}-{RecordIndex}", context) == "A100-17-3");
+        assert(VariableResolver::resolveText("{Number}-{Description}", context) == "A100-Bracket");
         assert(!VariableResolver::resolveText("{Date}", context).empty());
         assert(VariableResolver::findPlaceholders("A {ItemNumber} {Lot}").size() == 2);
+
+        context.values["Order id"] = "1001";
+        assert(VariableResolver::resolveText("{Order id}-{ItemNumber}", context) == "1001-A100");
+        assert(VariableResolver::findPlaceholders("A {Order id} {ItemNumber}").size() == 2);
     }
 
     void SerialRangeGeneratesAscendingAndDescendingJobs()
@@ -125,18 +132,18 @@ namespace
     void CsvImporterDetectsHeadersAndMapsRows()
     {
         const std::string content =
-            "ItemNumber,Description,Quantity\n"
-            "A100,\"Bracket, Left\",2\n"
-            "B200,Spacer,1\n";
+            "Number,Description\n"
+            "A100,\"Bracket, Left\"\n"
+            "B200,Spacer\n";
 
         CsvData data = CsvImporter::parse(content, true);
         assert(data.hasHeader);
-        assert(data.headers.size() == 3);
+        assert(data.headers.size() == 2);
         assert(data.rows.size() == 2);
         assert(data.rows[0][1] == "Bracket, Left");
 
-        const auto variables = data.rowAsVariables(0, {{"ItemNumber", "ItemNumber"}, {"Description", "Description"}});
-        assert(variables.at("ItemNumber") == "A100");
+        const auto variables = data.rowAsVariables(0, {{"Number", "Number"}, {"Description", "Description"}});
+        assert(variables.at("Number") == "A100");
         assert(variables.at("Description") == "Bracket, Left");
     }
 

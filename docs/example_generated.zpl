@@ -7,4 +7,10 @@
 ^FWN
 ^MD15
 ^PR4
+^FO16,10
+^A0N,44,34
+^FH\^FDTEST-001^FS
+^FO16,62
+^A0N,24,19
+^FH\^FDTest description^FS
 ^XZ

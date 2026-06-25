@@ -59,6 +59,8 @@ private:
     void loadDefaultTemplate();
     void newTemplate();
     void addElement(LabelElementType type);
+    void addNumberElement();
+    void addDescriptionElement();
     void duplicateSelectedElement();
     void deleteSelectedElement();
     void moveSelectedElement(int offset);
@@ -90,7 +92,7 @@ private:
     VariableContext promptContext() const;
     std::map<std::string, std::string> csvMapping() const;
     int quantityForRow(int rowIndex) const;
-    void printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext, const QString& mode);
+    bool printContexts(const std::vector<VariableContext>& contexts, int quantityPerContext, const QString& mode);
     void logPrintHistory(const QString& mode, int rows, int copies, bool success, const QString& message) const;
 
     LabelTemplate labelTemplate_;

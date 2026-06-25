@@ -8,7 +8,7 @@
 
 std::string VariableResolver::resolveText(const std::string& input, const VariableContext& context)
 {
-    std::regex tokenPattern("\\{([A-Za-z0-9_]+)\\}");
+    std::regex tokenPattern("\\{([^{}]+)\\}");
     std::string output;
     std::sregex_iterator begin(input.begin(), input.end(), tokenPattern);
     std::sregex_iterator end;
@@ -50,7 +50,7 @@ std::string VariableResolver::elementValue(const LabelElement& element, const Va
 std::map<std::string, std::string> VariableResolver::findPlaceholders(const std::string& text)
 {
     std::map<std::string, std::string> placeholders;
-    std::regex tokenPattern("\\{([A-Za-z0-9_]+)\\}");
+    std::regex tokenPattern("\\{([^{}]+)\\}");
     for (std::sregex_iterator it(text.begin(), text.end(), tokenPattern), end; it != end; ++it)
     {
         placeholders[(*it)[1].str()] = "";

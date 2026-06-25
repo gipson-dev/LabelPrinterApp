@@ -19,7 +19,7 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 | 13 | Print history | Complete for foundation | Persistent CSV print history logs successful and failed jobs to `logs\print_history.csv`. |
 | 14 | Batch printing | Complete | Copies, serial ranges, checked Excel/CSV rows, all rows, row ranges, and quantity-per-row printing. |
 | 15 | Advanced formatting | Complete for foundation | Font size dropdown, font width, bold, italic, underline, rotation, alignment, wrapping, multi-line, fixed/variable text, prefix/suffix, and auto-fit metadata. |
-| 16 | Drag-and-drop designer | Complete for foundation | Preview supports drag-to-move, selection handles, layer order, align buttons, equal spacing, and lock/unlock. Full resize handles and snap toggles remain future polish. |
+| 16 | Drag-and-drop designer | Complete | Preview supports drag-to-move, side/corner resize handles, layer order, align buttons, equal spacing, snap toggles, and lock/unlock. |
 | 17 | Packaging as EXE | Complete | `scripts/package-release.ps1` builds and deploys `dist\LabelPrinterApp` with Qt runtime files through `windeployqt` when available. |
 | 18 | GitHub and releases | Complete for foundation | GitHub Actions builds/tests and packages Windows artifacts for release workflows. Main branch is kept updated. |
 | 19 | Testing and calibration | Started | Core tests cover ZPL, CSV, variables, serial ranges, and template storage. Manual printer calibration notes remain next. |
@@ -31,7 +31,8 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 - Working Grid and Snap toolbar toggles for optional grid display and 0.25 inch snapped element movement.
 - Right-side `Element Property Editor` with true filtered pages: Text, Formatting, Position, Data, Barcode, and Print.
 - Functional bottom layout controls: align, equal spacing, bring forward, send backward, lock, and unlock.
-- Excel/CSV Data tab with load/save, editable rows, print checkboxes, copies, search, row ranges, and placeholder mapping.
+- Excel/CSV Data tab with load/save, editable rows, print checkboxes, copies, search, row ranges, placeholder mapping, and standard `Number`/`Description` fields.
+- Side/corner resize handles for selected text, barcode, and QR elements.
 - Stock presets for Uline S-8599, Uline S-22422, Zebra 2.25 x 0.75 generic, and Zebra ZD620 4 x 2.
 - Bundled blank templates for both 2.25 x 0.75 and 4 x 2 label stock.
 - Persistent app settings for the selected printer, stock, DPI, label setup, print options, active tab, and window layout.
@@ -42,6 +43,6 @@ This roadmap tracks the twenty-phase build plan. The current application covers 
 
 1. Run the manual QA checklist against the beta package on a clean Windows machine.
 2. Run printer calibration checks on 203 DPI and 300 DPI media.
-3. Continue designer polish with resize handles and image/logo support.
+3. Continue designer polish with image/logo support and keyboard resize nudging.
 4. Add a print history viewer/export screen.
 5. Add a fuller installer if beta setup requirements grow beyond the current IExpress wrapper.

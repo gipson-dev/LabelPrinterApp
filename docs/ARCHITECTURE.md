@@ -37,7 +37,9 @@ LabelPrinterApp/
 |   |-- ARCHITECTURE.md
 |   |-- MANUAL_QA_CHECKLIST.md
 |   |-- PRINTER_CALIBRATION.md
+|   |-- RELEASE_PROCESS.md
 |   |-- ROADMAP.md
+|   |-- USER_GUIDE.md
 |   |-- UI_REDESIGN.md
 |   `-- example_generated.zpl
 |-- logs/
@@ -62,7 +64,7 @@ LabelPrinterApp/
 ## UI Classes
 
 - `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, and raw print commands.
-- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, text/barcode/QR previews, selection handles, cursor coordinates, drag-to-move positioning, and optional 0.25 inch snap-to-grid movement. Locked elements cannot be dragged.
+- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, text/barcode/QR previews, selection handles, cursor coordinates, drag-to-move positioning, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. Locked elements cannot be dragged or resized.
 - `ElementEditorWidget` is the right-side `Element Property Editor`. Its section buttons are true filtered pages:
   - `Text`: name, type, and element text
   - `Formatting`: font size, width, bold, italic, underline, wrap, auto-fit, max lines, and alignment
@@ -86,7 +88,7 @@ The first version is intentionally simple. It logs successful and failed print s
 
 The Design tab uses a classic label-designer layout:
 
-- Left readable toolbox: Canvas Template selector, Select, Text, Number, Barcode, QR Code, Date/Time, Serial #, Line, Box, and Image.
+- Left readable toolbox: Canvas Template selector, Select, Text, Number, Description, Barcode, QR Code, Date/Time, Serial #, Line, Box, and Image.
 - Center preview canvas with rulers, optional grid, printable margin, and selection handles.
 - Right `Element Property Editor` with filtered property pages.
 - Bottom layout toolbar:
@@ -107,7 +109,7 @@ Persisted values include the window geometry/state, active tab, selected printer
 - Version 2: Qt GUI, preview, multiple elements, add/edit/delete, JSON templates, and printer selection.
 - Version 3: Code 128, Code 39, QR, barcode height, module width, and human-readable toggle.
 - Version 4: placeholders, prompt-at-print values, date/time tokens, serial numbers, prefix/suffix, and serial ranges.
-- Version 5: CSV and `.xlsx` import, header mapping, record preview, selected/all row printing, quantity per row, and placeholder replacement in text/barcode/QR fields.
+- Version 5: CSV and `.xlsx` import, header mapping, record preview, selected/all row printing, Number/Description field workflow, and placeholder replacement in text/barcode/QR fields.
 
 ## Build In Visual Studio
 
@@ -159,7 +161,7 @@ The setup EXE is a beta convenience wrapper around the portable ZIP.
 3. Choose a stock preset such as `Uline S-8599 - 2.25" x 0.75" Direct Thermal`.
 4. Match the DPI to the printer, usually 203 or 300.
 5. Use `Print Test Label` first.
-6. Load `examples\sample_items.csv` or `examples\excel_records_sample.csv` from the Data tab for variable database printing, then add template fields that use those CSV headers.
+6. Load `examples\sample_items.csv` or `examples\excel_records_sample.csv` from the Data tab for variable database printing, then add `Number` and `Description` fields.
 7. Print one label and verify alignment before printing a batch.
 
 For 2.25 x 0.75 stock, expected dot sizes are `457 x 152` at 203 DPI and `675 x 225` at 300 DPI.

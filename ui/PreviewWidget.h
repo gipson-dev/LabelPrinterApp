@@ -21,6 +21,7 @@ public:
 signals:
     void elementSelected(int index);
     void elementMoved(int index, double xInches, double yInches);
+    void elementChanged(int index, const LabelElement& element);
     void cursorPositionChanged(double xInches, double yInches);
 
 protected:
@@ -35,6 +36,9 @@ private:
     QPointF labelToWidget(double xInches, double yInches, const QRectF& label) const;
     QPointF widgetToLabel(const QPointF& point, const QRectF& label) const;
     int hitTest(const QPointF& point) const;
+    int resizeHandleAt(const QPointF& point, int elementIndex) const;
+    QRectF elementRectInches(const LabelElement& element, const QRectF& label) const;
+    void applyResize(const QPointF& labelPoint);
     void drawGrid(QPainter& painter, const QRectF& label) const;
     void drawTextElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
     void drawBarcodeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
@@ -44,7 +48,12 @@ private:
     VariableContext variables_;
     int selectedElement_ = -1;
     int draggingElement_ = -1;
+    int resizingElement_ = -1;
+    int resizeHandle_ = -1;
     bool gridVisible_ = true;
     bool snapToGrid_ = false;
     QPointF dragOffsetInches_;
+    QPointF resizeStartPointInches_;
+    QRectF resizeStartRectInches_;
+    LabelElement resizeStartElement_;
 };

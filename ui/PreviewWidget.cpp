@@ -219,6 +219,26 @@ void PreviewWidget::paintEvent(QPaintEvent*)
 
 void PreviewWidget::mousePressEvent(QMouseEvent* event)
 {
+    if (selectedElement_ >= 0 && selectedElement_ < static_cast<int>(template_.elements.size()))
+    {
+        const int handle = resizeHandleAt(event->position(), selectedElement_);
+        if (handle >= 0)
+        {
+            emit elementSelected(selectedElement_);
+            if (!template_.elements[selectedElement_].locked)
+            {
+                QRectF label = labelRect();
+                resizingElement_ = selectedElement_;
+                resizeHandle_ = handle;
+                resizeStartPointInches_ = widgetToLabel(event->position(), label);
+                resizeStartRectInches_ = elementRectInches(template_.elements[selectedElement_], label);
+                resizeStartElement_ = template_.elements[selectedElement_];
+            }
+            update();
+            return;
+        }
+    }
+
     int hit = hitTest(event->position());
     selectedElement_ = hit;
     emit elementSelected(hit);
@@ -244,8 +264,22 @@ void PreviewWidget::mouseMoveEvent(QMouseEvent* event)
     QPointF cursorPoint = widgetToLabel(event->position(), label);
     emit cursorPositionChanged(cursorPoint.x(), cursorPoint.y());
 
+    if (resizingElement_ >= 0 && resizingElement_ < static_cast<int>(template_.elements.size()))
+    {
+        applyResize(cursorPoint);
+        return;
+    }
+
     if (draggingElement_ < 0 || draggingElement_ >= static_cast<int>(template_.elements.size()))
     {
+        if (selectedElement_ >= 0 && resizeHandleAt(event->position(), selectedElement_) >= 0)
+        {
+            setCursor(Qt::SizeAllCursor);
+        }
+        else
+        {
+            unsetCursor();
+        }
         return;
     }
 
@@ -268,6 +302,8 @@ void PreviewWidget::mouseMoveEvent(QMouseEvent* event)
 void PreviewWidget::mouseReleaseEvent(QMouseEvent*)
 {
     draggingElement_ = -1;
+    resizingElement_ = -1;
+    resizeHandle_ = -1;
 }
 
 QRectF PreviewWidget::labelRect() const
@@ -342,6 +378,113 @@ int PreviewWidget::hitTest(const QPointF& point) const
     return -1;
 }
 
+int PreviewWidget::resizeHandleAt(const QPointF& point, int elementIndex) const
+{
+    if (elementIndex < 0 || elementIndex >= static_cast<int>(template_.elements.size()))
+    {
+        return -1;
+    }
+
+    const QRectF box = elementRect(template_.elements[elementIndex], labelRect());
+    const double size = 14.0;
+    const QPointF points[] = {
+        box.topLeft(), QPointF(box.center().x(), box.top()), box.topRight(),
+        QPointF(box.left(), box.center().y()), QPointF(box.right(), box.center().y()),
+        box.bottomLeft(), QPointF(box.center().x(), box.bottom()), box.bottomRight()
+    };
+    for (int i = 0; i < 8; ++i)
+    {
+        QRectF handle(points[i].x() - size / 2.0, points[i].y() - size / 2.0, size, size);
+        if (handle.contains(point))
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+QRectF PreviewWidget::elementRectInches(const LabelElement& element, const QRectF& label) const
+{
+    const QRectF widgetRect = elementRect(element, label);
+    const QPointF topLeft = widgetToLabel(widgetRect.topLeft(), label);
+    const QPointF bottomRight = widgetToLabel(widgetRect.bottomRight(), label);
+    return QRectF(topLeft, bottomRight).normalized();
+}
+
+void PreviewWidget::applyResize(const QPointF& labelPoint)
+{
+    if (resizingElement_ < 0 || resizingElement_ >= static_cast<int>(template_.elements.size()))
+    {
+        return;
+    }
+
+    QRectF rect = resizeStartRectInches_;
+    const QPointF delta = labelPoint - resizeStartPointInches_;
+    const bool left = resizeHandle_ == 0 || resizeHandle_ == 3 || resizeHandle_ == 5;
+    const bool right = resizeHandle_ == 2 || resizeHandle_ == 4 || resizeHandle_ == 7;
+    const bool top = resizeHandle_ == 0 || resizeHandle_ == 1 || resizeHandle_ == 2;
+    const bool bottom = resizeHandle_ == 5 || resizeHandle_ == 6 || resizeHandle_ == 7;
+
+    if (left) rect.setLeft(rect.left() + delta.x());
+    if (right) rect.setRight(rect.right() + delta.x());
+    if (top) rect.setTop(rect.top() + delta.y());
+    if (bottom) rect.setBottom(rect.bottom() + delta.y());
+    rect = rect.normalized();
+
+    const double minWidth = 0.08;
+    const double minHeight = 0.05;
+    if (rect.width() < minWidth)
+    {
+        if (left) rect.setLeft(rect.right() - minWidth);
+        else rect.setRight(rect.left() + minWidth);
+    }
+    if (rect.height() < minHeight)
+    {
+        if (top) rect.setTop(rect.bottom() - minHeight);
+        else rect.setBottom(rect.top() + minHeight);
+    }
+
+    rect.moveLeft(std::max(0.0, rect.left()));
+    rect.moveTop(std::max(0.0, rect.top()));
+    if (snapToGrid_)
+    {
+        constexpr double gridStep = 0.25;
+        rect.moveLeft(std::round(rect.left() / gridStep) * gridStep);
+        rect.moveTop(std::round(rect.top() / gridStep) * gridStep);
+        rect.setWidth(std::max(minWidth, std::round(rect.width() / gridStep) * gridStep));
+        rect.setHeight(std::max(minHeight, std::round(rect.height() / gridStep) * gridStep));
+    }
+
+    LabelElement& element = template_.elements[resizingElement_];
+    element = resizeStartElement_;
+    element.xInches = rect.left();
+    element.yInches = rect.top();
+    const int dpi = std::max(1, template_.settings.dpi);
+
+    if (element.type == LabelElementType::Text)
+    {
+        element.boxWidthInches = std::max(minWidth, rect.width());
+        const int lines = element.wrap || element.multiLine ? std::max(1, element.maxLines) : 1;
+        element.fontHeightDots = std::max(8, static_cast<int>(std::round(rect.height() * dpi / lines)));
+        element.fontWidthDots = std::max(8, static_cast<int>(std::round(element.fontHeightDots * 0.78)));
+    }
+    else if (element.type == LabelElementType::QrCode)
+    {
+        const double target = std::max(rect.width(), rect.height());
+        element.qrMagnification = std::clamp(static_cast<int>(std::round(target / 0.055)), 1, 10);
+    }
+    else
+    {
+        element.boxWidthInches = std::max(minWidth, rect.width());
+        element.barcodeHeightDots = std::max(10, static_cast<int>(std::round(rect.height() * dpi * 0.78)));
+        const double estimatedModules = std::max(60.0, static_cast<double>(std::max<std::size_t>(8, VariableResolver::elementValue(element, variables_).size())) * 11.0);
+        element.barcodeModuleWidth = std::clamp(static_cast<int>(std::round(rect.width() * dpi / estimatedModules)), 1, 10);
+    }
+
+    emit elementChanged(resizingElement_, element);
+    update();
+}
+
 void PreviewWidget::drawGrid(QPainter& painter, const QRectF& label) const
 {
     painter.save();
@@ -373,8 +516,9 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" :
-                                                placeholder.first == "Description" ? "Direct Thermal Removable Label" :
+            context.values[placeholder.first] = placeholder.first == "Number" ? "TEST-001" :
+                                                placeholder.first == "ItemNumber" ? "TEST-001" :
+                                                placeholder.first == "Description" ? "Test description" :
                                                 placeholder.first == "Order id" ? "1001" :
                                                 placeholder.first == "Name" ? "Database school 2" :
                                                 placeholder.first == "Lot" ? "LOT-001" :
@@ -428,7 +572,8 @@ void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& el
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" :
+            context.values[placeholder.first] = placeholder.first == "Number" ? "TEST-001" :
+                                                placeholder.first == "ItemNumber" ? "TEST-001" :
                                                 placeholder.first == "Order id" ? "1001" :
                                                 "226026-K-003";
         }
@@ -501,7 +646,8 @@ void PreviewWidget::drawQrElement(QPainter& painter, const LabelElement& element
     {
         if (context.values.find(placeholder.first) == context.values.end())
         {
-            context.values[placeholder.first] = placeholder.first == "ItemNumber" ? "226026-K-003" :
+            context.values[placeholder.first] = placeholder.first == "Number" ? "TEST-001" :
+                                                placeholder.first == "ItemNumber" ? "TEST-001" :
                                                 placeholder.first == "Order id" ? "1001" :
                                                 placeholder.first == "Name" ? "Database school 2" :
                                                 "Sample";

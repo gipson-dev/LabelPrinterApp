@@ -59,7 +59,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     typeCombo_ = new QComboBox(this);
     typeCombo_->addItems({"Text", "Code 128", "Code 39", "QR Code"});
     sourceCombo_ = new QComboBox(this);
-    sourceCombo_->addItems({"Fixed", "Variable", "Prompt at Print", "Serial Number"});
+    sourceCombo_->addItems({"Fixed", "CSV/User Field", "Prompt at Print", "Serial Number"});
     textEdit_ = new QLineEdit(this);
     variableEdit_ = new QLineEdit(this);
     prefixEdit_ = new QLineEdit(this);
@@ -80,7 +80,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
         spin->setMinimumHeight(24);
     }
     fontSizeCombo_ = new QComboBox(this);
-    for (int size : {12, 16, 18, 22, 26, 30, 36, 44, 48, 56, 64, 72, 96})
+    for (int size : {12, 16, 18, 22, 26, 30, 36, 44, 48, 56, 64, 72, 84, 96, 108, 120, 144, 168, 192, 216})
     {
         addFontSizeOption(fontSizeCombo_, size);
     }
@@ -125,7 +125,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     form_->addRow("Type", typeCombo_);
     form_->addRow("Source", sourceCombo_);
     form_->addRow("Text", textEdit_);
-    form_->addRow("Variable", variableEdit_);
+    form_->addRow("CSV/User Field", variableEdit_);
     form_->addRow("Prefix", prefixEdit_);
     form_->addRow("Suffix", suffixEdit_);
     form_->addRow("X", xSpin_);
