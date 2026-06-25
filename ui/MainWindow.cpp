@@ -105,6 +105,7 @@ void MainWindow::buildUi()
         "QLabel#ToolboxSectionLabel, QLabel#ToolbarSectionLabel { color: #333333; font-weight: 600; padding: 3px 4px; }"
         "QLabel#ToolboxSectionLabel { border-bottom: 1px solid #b8b8b8; margin-bottom: 3px; }"
         "QLabel#ToolbarSectionLabel { min-width: 78px; }"
+        "QComboBox#CanvasTemplateCombo { min-height: 24px; }"
         "QPushButton#InspectorTabButton { text-align: center; padding: 4px 6px; min-height: 24px; }"
         "QPushButton#InspectorTabButton:checked { background: #ffffff; border: 1px solid #6f9ed6; }"
         "QGroupBox { border: 1px solid #8f8f8f; margin-top: 10px; background: #eeeeee; }"
@@ -338,6 +339,22 @@ QWidget* MainWindow::buildDesignTab()
     auto* toolboxLayout = new QVBoxLayout(toolbox);
     toolboxLayout->setContentsMargins(6, 8, 6, 8);
     toolboxLayout->setSpacing(5);
+    auto* canvasTitle = new QLabel("Canvas Template", toolbox);
+    canvasTitle->setObjectName("ToolboxSectionLabel");
+    canvasTitle->setToolTip("Choose the blank label canvas size for this design");
+    toolboxLayout->addWidget(canvasTitle);
+    canvasTemplateCombo_ = new QComboBox(toolbox);
+    canvasTemplateCombo_->setObjectName("CanvasTemplateCombo");
+    canvasTemplateCombo_->setToolTip("Blank canvas templates from the templates folder");
+    toolboxLayout->addWidget(canvasTemplateCombo_);
+    auto* loadCanvasButton = new QPushButton("Load Canvas", toolbox);
+    loadCanvasButton->setObjectName("ToolboxButton");
+    loadCanvasButton->setToolTip("Load the selected blank canvas template");
+    loadCanvasButton->setMinimumWidth(100);
+    toolboxLayout->addWidget(loadCanvasButton);
+    connect(loadCanvasButton, &QPushButton::clicked, this, &MainWindow::loadSelectedCanvasTemplate);
+    connect(canvasTemplateCombo_, &QComboBox::activated, this, [this] { loadSelectedCanvasTemplate(); });
+
     auto* toolboxTitle = new QLabel("Tool Palette", toolbox);
     toolboxTitle->setObjectName("ToolboxSectionLabel");
     toolboxTitle->setToolTip("Add or select label design elements");
@@ -965,20 +982,32 @@ void MainWindow::refreshElementList()
 
 void MainWindow::refreshTemplateLibrary()
 {
-    if (!templateList_)
+    if (templateList_)
     {
-        return;
+        templateList_->clear();
+    }
+    if (canvasTemplateCombo_)
+    {
+        QSignalBlocker blocker(canvasTemplateCombo_);
+        canvasTemplateCombo_->clear();
     }
 
-    templateList_->clear();
     QDir dir("templates");
     const QFileInfoList files = dir.entryInfoList({"*.json"}, QDir::Files, QDir::Name);
     for (const QFileInfo& file : files)
     {
         LabelTemplate label = TemplateStorage::load(file.filePath().toStdString());
-        auto* item = new QListWidgetItem(QString::fromStdString(label.name), templateList_);
-        item->setData(Qt::UserRole, file.filePath());
-        item->setToolTip(file.filePath());
+        const QString name = QString::fromStdString(label.name);
+        if (templateList_)
+        {
+            auto* item = new QListWidgetItem(name, templateList_);
+            item->setData(Qt::UserRole, file.filePath());
+            item->setToolTip(file.filePath());
+        }
+        if (canvasTemplateCombo_)
+        {
+            canvasTemplateCombo_->addItem(name, file.filePath());
+        }
     }
 }
 
@@ -1307,6 +1336,15 @@ void MainWindow::loadTemplateFromPath(const QString& path)
     refreshElementList();
     selectElement(labelTemplate_.elements.empty() ? -1 : 0);
     refreshPreview();
+    if (canvasTemplateCombo_)
+    {
+        const int index = canvasTemplateCombo_->findData(path);
+        if (index >= 0)
+        {
+            QSignalBlocker blocker(canvasTemplateCombo_);
+            canvasTemplateCombo_->setCurrentIndex(index);
+        }
+    }
 }
 
 void MainWindow::loadSelectedLibraryTemplate()
@@ -1318,6 +1356,18 @@ void MainWindow::loadSelectedLibraryTemplate()
     }
 
     loadTemplateFromPath(templateList_->currentItem()->data(Qt::UserRole).toString());
+}
+
+void MainWindow::loadSelectedCanvasTemplate()
+{
+    if (!canvasTemplateCombo_ || canvasTemplateCombo_->currentIndex() < 0)
+    {
+        QMessageBox::information(this, "Canvas Template", "No canvas template is available.");
+        return;
+    }
+
+    loadTemplateFromPath(canvasTemplateCombo_->currentData().toString());
+    statusBar()->showMessage("Canvas template loaded.");
 }
 
 void MainWindow::importCsv()

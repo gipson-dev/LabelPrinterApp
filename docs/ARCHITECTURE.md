@@ -86,7 +86,7 @@ The first version is intentionally simple. It logs successful and failed print s
 
 The Design tab uses a classic label-designer layout:
 
-- Left readable toolbox: Select, Text, Number, Barcode, QR Code, Date/Time, Serial #, Line, Box, and Image.
+- Left readable toolbox: Canvas Template selector, Select, Text, Number, Barcode, QR Code, Date/Time, Serial #, Line, Box, and Image.
 - Center preview canvas with rulers, optional grid, printable margin, and selection handles.
 - Right `Element Property Editor` with filtered property pages.
 - Bottom layout toolbar:

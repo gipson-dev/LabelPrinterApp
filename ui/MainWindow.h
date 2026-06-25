@@ -75,6 +75,7 @@ private:
     void loadTemplate();
     void loadTemplateFromPath(const QString& path);
     void loadSelectedLibraryTemplate();
+    void loadSelectedCanvasTemplate();
     void importCsv();
     void configureCsvMapping();
     void previewSelectedCsvRecord();
@@ -102,6 +103,7 @@ private:
     ElementEditorWidget* editor_ = nullptr;
     QListWidget* elementList_ = nullptr;
     QListWidget* templateList_ = nullptr;
+    QComboBox* canvasTemplateCombo_ = nullptr;
     QComboBox* printerCombo_ = nullptr;
     QComboBox* stockPresetCombo_ = nullptr;
     QComboBox* dpiCombo_ = nullptr;

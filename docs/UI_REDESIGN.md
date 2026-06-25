@@ -13,10 +13,12 @@ LabelPrinterApp now uses a classic LabelDirect/ZebraDesigner-style desktop layou
 | New Open Save Print Cut Copy Paste Undo Redo Zoom +/- Fit Text Barcode QR ...    |
 +--------------+---------------------------------------------+-------------------+
 | Toolbox      | inch ruler                                  | Element Property  |
-| Select       |---------------------------------------------| Editor            |
-| Text         |                                             | Text Formatting   |
-| Number       |   gray workspace                            | Position          |
-| Barcode      |      +-------------------------------+      | Data Barcode      |
+| Canvas       |---------------------------------------------| Editor            |
+| Template     |                                             | Text Formatting   |
+| Select       |   gray workspace                            | Position          |
+| Text         |      +-------------------------------+      | Data Barcode      |
+| Number       |      | white label with grid          |      | Print             |
+| Barcode      |      | dashed printable boundary      |      |                   |
 | QR Code      |      | white label with grid          |      | Print             |
 | Date/Time    |      | dashed printable boundary      |      |                   |
 | Serial #     |      | blue selection handles         |      | Filtered fields   |
@@ -70,6 +72,7 @@ The filtered page design prevents the old long property list from making the pag
 ## Designer Behavior
 
 - Click elements in the preview to select them.
+- Use the Design tab's `Canvas Template` selector to load a blank 2.25 x 0.75 or 4 x 2 canvas without switching tabs.
 - Drag unlocked elements to move them.
 - Use the `Grid` toolbar button to show or hide the design grid.
 - Use the `Snap` toolbar button to snap dragged elements to the 0.25 inch design grid.

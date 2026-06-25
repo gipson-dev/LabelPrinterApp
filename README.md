@@ -27,8 +27,9 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 4. Open the Settings tab and select your Zebra printer from the Default Printer list. Click `Refresh` if it was just plugged in or installed.
 5. Pick a Label Stock preset, such as `Uline S-8599 - 2.25" x 0.75" Direct Thermal`. Landscape is the default orientation.
 6. Click `Save Settings` if you want this printer and stock setup to load automatically next time.
-7. Edit the label fields or drag items in the preview.
-8. Print one test label before printing a batch.
+7. On the Design tab, choose a blank `Canvas Template` if you want to switch between 2.25 x 0.75 and 4 x 2 stock without leaving the designer.
+8. Edit the label fields or drag items in the preview.
+9. Print one test label before printing a batch.
 
 ## App Settings
 

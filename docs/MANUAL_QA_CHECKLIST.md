@@ -23,6 +23,8 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Confirm the preview updates.
 - [ ] Load a 4 x 2 blank template.
 - [ ] Confirm the label size and preview update.
+- [ ] Return to the Design tab and load each blank canvas from the `Canvas Template` selector.
+- [ ] Confirm the canvas switches without using the Templates tab.
 - [ ] Save the current template.
 - [ ] Reload the saved template.
 - [ ] Confirm element text, barcode, QR, orientation, and size are retained.
