@@ -55,9 +55,11 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Open the Data tab.
 - [ ] Import `examples\sample_items.csv`.
 - [ ] Confirm rows and columns load.
-- [ ] Select one row for printing.
+- [ ] Check one row in the `Print` column.
 - [ ] Click `Print Selected CSV`.
-- [ ] Confirm only the selected row prints.
+- [ ] Confirm only the checked row prints.
+- [ ] Uncheck that row, highlight one table row, and click `Print Selected CSV`.
+- [ ] Confirm the highlighted imported row prints.
 - [ ] Click `Print All CSV`.
 - [ ] Confirm all rows print.
 - [ ] Confirm the `Quantity` column prints multiple copies when enabled.

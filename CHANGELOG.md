@@ -2,6 +2,7 @@
 
 ## 2026-06-22
 
+- Fixed the Data tab `Print Selected Records` button so imported Excel/CSV rows print when they are checked in the Print column or highlighted in the table.
 - Added a bottom-right `Quick Print` button to the Element Property Editor.
 - Added a Design-tab `Canvas Template` selector so blank canvas sizes can be loaded directly from the designer.
 - Added visible `Tool Palette` and `Layout Tools` section labels to clarify the left design tools and bottom layout toolbar.

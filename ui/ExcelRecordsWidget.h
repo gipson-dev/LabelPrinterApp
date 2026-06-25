@@ -22,6 +22,7 @@ public:
     ExcelRecordSet records() const;
     QStringList headers() const;
     QVector<int> printableSourceRows() const;
+    QVector<int> selectedSourceRows() const;
     int copiesForSourceRow(int sourceRow) const;
 
 signals:

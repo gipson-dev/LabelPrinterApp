@@ -78,7 +78,7 @@ The Data tab is an editable records screen for `.xlsx` and `.csv` files. It incl
 - Editable imported columns such as `{Order id}` and `{Name}`
 - A range box such as `1-*`, `1-10`, `5`, `2,4,6`, or `1-5,8,10-12`
 
-Checked rows that match the range are printed through the current label template. Imported headers become template variables, so an Excel column named `Order id` can be used as `{Order id}` in text, barcode, or QR fields.
+Checked rows that match the range are printed through the current label template. The `Print Selected Records` button also honors highlighted table rows, so you can print by checking the `Print` column, selecting rows in the table, or both. Imported headers become template variables, so an Excel column named `Order id` can be used as `{Order id}` in text, barcode, or QR fields.
 
 Use `examples\excel_records_sample.csv` as quick test data. `.xlsx` files are supported in app builds through QXlsx.
 

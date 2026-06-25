@@ -1522,9 +1522,43 @@ void MainWindow::printSelectedCsvRows()
     {
         return;
     }
-    for (int row : excelRecords_->printableSourceRows())
+
+    ExcelRecordSet records = excelRecords_->records();
+    if (records.records.empty())
     {
+        QMessageBox::information(this, "No Imported Records", "Load an Excel or CSV file on the Data tab before printing selected records.");
+        return;
+    }
+
+    QVector<int> rows = excelRecords_->printableSourceRows();
+    for (int row : excelRecords_->selectedSourceRows())
+    {
+        if (!rows.contains(row))
+        {
+            rows << row;
+        }
+    }
+    std::sort(rows.begin(), rows.end());
+
+    if (rows.empty())
+    {
+        QMessageBox::information(this, "No Records Selected", "Check rows in the Data tab's Print column or highlight rows in the imported table before printing.");
+        return;
+    }
+
+    int printedRows = 0;
+    for (int row : rows)
+    {
+        if (row < 0 || row >= records.records.size())
+        {
+            continue;
+        }
         printContexts({contextForRow(row)}, copiesSpin_->value() * excelRecords_->copiesForSourceRow(row), "Selected CSV Row");
+        ++printedRows;
+    }
+    if (printedRows > 0)
+    {
+        statusBar()->showMessage(QString("Printed %1 selected imported record(s).").arg(printedRows), 5000);
     }
 }
 

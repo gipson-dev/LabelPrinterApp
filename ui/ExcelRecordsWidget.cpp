@@ -13,11 +13,14 @@
 #include <QSpinBox>
 #include <QStyledItemDelegate>
 #include <QTableView>
+#include <QItemSelectionModel>
 #include <QVBoxLayout>
 
 #include "core/ExcelImporter.h"
 #include "core/RecordRangeParser.h"
 #include "ui/ExcelTableModel.h"
+
+#include <algorithm>
 
 class CopiesDelegate : public QStyledItemDelegate
 {
@@ -148,6 +151,27 @@ QVector<int> ExcelRecordsWidget::printableSourceRows() const
             rows << row;
         }
     }
+    return rows;
+}
+
+QVector<int> ExcelRecordsWidget::selectedSourceRows() const
+{
+    QVector<int> rows;
+    if (!table_ || !table_->selectionModel())
+    {
+        return rows;
+    }
+
+    const QModelIndexList selectedRows = table_->selectionModel()->selectedRows();
+    for (const QModelIndex& proxyIndex : selectedRows)
+    {
+        const QModelIndex sourceIndex = proxy_->mapToSource(proxyIndex);
+        if (sourceIndex.isValid() && !rows.contains(sourceIndex.row()))
+        {
+            rows << sourceIndex.row();
+        }
+    }
+    std::sort(rows.begin(), rows.end());
     return rows;
 }
 
