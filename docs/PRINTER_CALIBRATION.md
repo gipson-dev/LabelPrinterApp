@@ -73,6 +73,7 @@ If labels print too far up or down:
 
 - Calibrate media with `~JC`.
 - Confirm the correct label height and gap.
+- Confirm the current build includes the corrected normal-text vertical origin and that text is vertically centered in the designer selection box.
 - Adjust Y positions in the designer.
 - Use label top margin only for broad stock-level correction.
 

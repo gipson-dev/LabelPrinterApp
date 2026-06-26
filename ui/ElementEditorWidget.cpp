@@ -57,7 +57,7 @@ ElementEditorWidget::ElementEditorWidget(QWidget* parent)
     form_->setFormAlignment(Qt::AlignTop);
     nameEdit_ = new QLineEdit(this);
     typeCombo_ = new QComboBox(this);
-    typeCombo_->addItems({"Text", "Code 128", "Code 39", "QR Code"});
+    typeCombo_->addItems({"Text", "Code 128", "Code 39", "QR Code", "Line", "Box"});
     sourceCombo_ = new QComboBox(this);
     sourceCombo_->addItems({"Fixed", "CSV/User Field", "Prompt at Print", "Serial Number"});
     textEdit_ = new QLineEdit(this);
@@ -288,6 +288,8 @@ void ElementEditorWidget::updateVisibility()
     bool barcode = typeCombo_->currentIndex() == static_cast<int>(LabelElementType::Code128Barcode) ||
                    typeCombo_->currentIndex() == static_cast<int>(LabelElementType::Code39Barcode);
     bool qr = typeCombo_->currentIndex() == static_cast<int>(LabelElementType::QrCode);
+    bool shape = typeCombo_->currentIndex() == static_cast<int>(LabelElementType::Line) ||
+                 typeCombo_->currentIndex() == static_cast<int>(LabelElementType::Box);
     auto showRow = [this](QWidget* widget, bool visible) {
         if (widget)
         {
@@ -304,23 +306,23 @@ void ElementEditorWidget::updateVisibility()
 
     showRow(nameEdit_, showText);
     showRow(typeCombo_, showText);
-    showRow(textEdit_, showText);
+    showRow(textEdit_, showText && !shape);
 
-    showRow(fontSizeCombo_, showFormatting && text);
-    showRow(fontWidthSpin_, showFormatting && text);
+    showRow(fontSizeCombo_, showFormatting && (text || shape));
+    showRow(fontWidthSpin_, showFormatting && (text || shape));
     showRow(formattingChecksRow_, showFormatting && text);
     showRow(maxLinesSpin_, showFormatting && text);
     showRow(alignmentCombo_, showFormatting && text);
 
     showRow(xSpin_, showPosition);
     showRow(ySpin_, showPosition);
-    showRow(boxWidthSpin_, showPosition && text);
+    showRow(boxWidthSpin_, showPosition && (text || shape));
     showRow(rotationCombo_, showPosition);
 
-    showRow(sourceCombo_, showData);
-    showRow(variableEdit_, showData);
-    showRow(prefixEdit_, showData);
-    showRow(suffixEdit_, showData);
+    showRow(sourceCombo_, showData && !shape);
+    showRow(variableEdit_, showData && !shape);
+    showRow(prefixEdit_, showData && !shape);
+    showRow(suffixEdit_, showData && !shape);
 
     showRow(barcodeHeightSpin_, showBarcode && barcode);
     showRow(moduleWidthSpin_, showBarcode && barcode);

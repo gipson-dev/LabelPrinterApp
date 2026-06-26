@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -39,6 +40,7 @@
 #include <QTextEdit>
 #include <QTextStream>
 #include <QToolBar>
+#include <QUrl>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -61,12 +63,28 @@ QSizeF estimatedElementSizeInches(const LabelTemplate& labelTemplate, const Labe
     if (element.type == LabelElementType::Text)
     {
         const int lines = element.wrap || element.multiLine ? std::max(1, element.maxLines) : 1;
-        return QSizeF(std::max(0.05, element.boxWidthInches), std::max(0.05, (element.fontHeightDots * lines + 12) / dpi));
+        int fontHeight = element.fontHeightDots;
+        if (element.autoFit && !element.text.empty() && element.boxWidthInches > 0)
+        {
+            const int estimatedWidth = static_cast<int>(element.text.size()) * element.fontWidthDots;
+            const int boxWidth = labelTemplate.settings.inchesToDots(element.boxWidthInches);
+            if (estimatedWidth > boxWidth)
+            {
+                fontHeight = std::max(8, element.fontHeightDots * boxWidth / std::max(1, estimatedWidth));
+            }
+        }
+        return QSizeF(std::max(0.05, element.boxWidthInches), std::max(0.05, (fontHeight * lines) / dpi));
     }
     if (element.type == LabelElementType::QrCode)
     {
         const double size = std::max(0.12, element.qrMagnification * 0.055);
         return QSizeF(size, size);
+    }
+    if (element.type == LabelElementType::Line || element.type == LabelElementType::Box)
+    {
+        return QSizeF(
+            std::max(0.05, element.boxWidthInches),
+            std::max(0.01, static_cast<double>(std::max(1, element.fontHeightDots)) / dpi));
     }
 
     const double width = std::max(0.25, static_cast<double>(std::max<std::size_t>(8, element.text.size())) * element.barcodeModuleWidth * 9.0 / dpi);
@@ -235,13 +253,20 @@ void MainWindow::buildMenus()
 
     auto* insert = menuBar()->addMenu("Insert");
     insert->addAction("Text", this, [this] { addElement(LabelElementType::Text); });
+    insert->addAction("Number", this, &MainWindow::addNumberElement);
+    insert->addAction("Description", this, &MainWindow::addDescriptionElement);
     insert->addAction("Barcode", this, [this] { addElement(LabelElementType::Code128Barcode); });
     insert->addAction("QR Code", this, [this] { addElement(LabelElementType::QrCode); });
+    insert->addAction("Line", this, &MainWindow::addLineElement);
+    insert->addAction("Box", this, &MainWindow::addBoxElement);
 
     auto* edit = menuBar()->addMenu("Edit");
-    edit->addAction("Cut");
-    edit->addAction("Copy");
-    edit->addAction("Paste");
+    edit->addAction("Cut", this, &MainWindow::cutSelectedElement);
+    edit->addAction("Copy", this, &MainWindow::copySelectedElement);
+    edit->addAction("Paste", this, &MainWindow::pasteElement);
+    edit->addSeparator();
+    edit->addAction("Undo", this, &MainWindow::undo);
+    edit->addAction("Redo", this, &MainWindow::redo);
     edit->addSeparator();
     edit->addAction("Duplicate Element", this, &MainWindow::duplicateSelectedElement);
     edit->addAction("Delete Element", this, &MainWindow::deleteSelectedElement);
@@ -257,9 +282,9 @@ void MainWindow::buildMenus()
 
     auto* view = menuBar()->addMenu("View");
     view->addAction("Preview ZPL", this, &MainWindow::previewZpl);
-    view->addAction("Zoom In");
-    view->addAction("Zoom Out");
-    view->addAction("Fit to Label");
+    view->addAction("Zoom In", this, [this] { preview_->zoomIn(); statusZoomLabel_->setText("Zoom In"); });
+    view->addAction("Zoom Out", this, [this] { preview_->zoomOut(); statusZoomLabel_->setText("Zoom Out"); });
+    view->addAction("Fit to Label", this, [this] { preview_->zoomFit(); statusZoomLabel_->setText("Zoom Fit"); });
 
     auto* stock = menuBar()->addMenu("Stock");
     stock->addAction("Label Stock Settings", this, [this] { tabs_->setCurrentIndex(5); });
@@ -283,6 +308,7 @@ void MainWindow::buildMenus()
     templates->addAction("Save Template", this, &MainWindow::saveTemplate);
 
     auto* help = menuBar()->addMenu("Help");
+    help->addAction("User Guide", this, &MainWindow::showHelp);
     help->addAction("About", this, [this] {
         QMessageBox::about(this, "About LabelPrinterApp", "LabelPrinterApp designs and prints Zebra ZPL labels.");
     });
@@ -298,20 +324,24 @@ void MainWindow::buildToolbar()
     toolbar->addAction(style()->standardIcon(QStyle::SP_DialogSaveButton), "Save", this, &MainWindow::saveTemplate);
     toolbar->addSeparator();
     toolbar->addAction(style()->standardIcon(QStyle::SP_DialogApplyButton), "Print", this, &MainWindow::printCurrent);
-    toolbar->addAction("Cut");
-    toolbar->addAction("Copy");
-    toolbar->addAction("Paste");
+    toolbar->addAction("Cut", this, &MainWindow::cutSelectedElement);
+    toolbar->addAction("Copy", this, &MainWindow::copySelectedElement);
+    toolbar->addAction("Paste", this, &MainWindow::pasteElement);
     toolbar->addSeparator();
-    toolbar->addAction("Undo");
-    toolbar->addAction("Redo");
+    toolbar->addAction("Undo", this, &MainWindow::undo);
+    toolbar->addAction("Redo", this, &MainWindow::redo);
     toolbar->addSeparator();
-    toolbar->addAction(style()->standardIcon(QStyle::SP_ArrowUp), "Zoom In");
-    toolbar->addAction(style()->standardIcon(QStyle::SP_ArrowDown), "Zoom Out");
-    toolbar->addAction("Fit", this, [this] { if (statusZoomLabel_) statusZoomLabel_->setText("Zoom Fit"); });
+    toolbar->addAction(style()->standardIcon(QStyle::SP_ArrowUp), "Zoom In", this, [this] { preview_->zoomIn(); statusZoomLabel_->setText("Zoom In"); });
+    toolbar->addAction(style()->standardIcon(QStyle::SP_ArrowDown), "Zoom Out", this, [this] { preview_->zoomOut(); statusZoomLabel_->setText("Zoom Out"); });
+    toolbar->addAction("Fit", this, [this] { preview_->zoomFit(); if (statusZoomLabel_) statusZoomLabel_->setText("Zoom Fit"); });
     toolbar->addSeparator();
     toolbar->addAction("T", this, [this] { addElement(LabelElementType::Text); });
+    toolbar->addAction("#", this, &MainWindow::addNumberElement);
+    toolbar->addAction("D", this, &MainWindow::addDescriptionElement);
     toolbar->addAction("|||", this, [this] { addElement(LabelElementType::Code128Barcode); });
     toolbar->addAction("QR", this, [this] { addElement(LabelElementType::QrCode); });
+    toolbar->addAction("-", this, &MainWindow::addLineElement);
+    toolbar->addAction("□", this, &MainWindow::addBoxElement);
     toolbar->addAction(style()->standardIcon(QStyle::SP_TrashIcon), "Delete", this, &MainWindow::deleteSelectedElement);
     toolbar->addSeparator();
     toolbar->addAction("Front", this, [this] { moveSelectedElementToIndex(static_cast<int>(labelTemplate_.elements.size()) - 1); });
@@ -330,7 +360,7 @@ void MainWindow::buildToolbar()
     snapAction_->setToolTip("Snap dragged elements to the 0.25 inch design grid");
     connect(snapAction_, &QAction::toggled, this, &MainWindow::setSnapToGrid);
     toolbar->addSeparator();
-    toolbar->addAction(style()->standardIcon(QStyle::SP_MessageBoxQuestion), "Help");
+    toolbar->addAction(style()->standardIcon(QStyle::SP_MessageBoxQuestion), "Help", this, &MainWindow::showHelp);
 
     auto* alignToolbar = new QToolBar("Alignment", this);
     alignToolbar->setIconSize(QSize(16, 16));
@@ -475,7 +505,11 @@ QWidget* MainWindow::buildDesignTab()
     lineButton->setToolTip("Line tool");
     boxButton->setToolTip("Box tool");
     imageButton->setToolTip("Image/logo tool (future)");
-    imageButton->setEnabled(false);
+    connect(lineButton, &QPushButton::clicked, this, &MainWindow::addLineElement);
+    connect(boxButton, &QPushButton::clicked, this, &MainWindow::addBoxElement);
+    connect(imageButton, &QPushButton::clicked, this, [this] {
+        QMessageBox::information(this, "Image Tool", "Image/logo elements are not available in this beta yet.");
+    });
     toolboxLayout->addStretch();
 
     preview_ = new PreviewWidget(tab);
@@ -1140,6 +1174,7 @@ void MainWindow::loadDefaultTemplate()
 
 void MainWindow::newTemplate()
 {
+    saveUndoState();
     labelTemplate_ = LabelTemplate::defaultTemplate();
     csvMappingOverrides_.clear();
     refreshSettingsControls();
@@ -1150,6 +1185,7 @@ void MainWindow::newTemplate()
 
 void MainWindow::addElement(LabelElementType type)
 {
+    saveUndoState();
     LabelElement element;
     element.type = type;
     element.name = type == LabelElementType::Text ? "Text" : (type == LabelElementType::QrCode ? "QR Code" : "Barcode");
@@ -1182,6 +1218,19 @@ void MainWindow::addElement(LabelElementType type)
         element.text = "NUMBER:{Number}";
         element.qrMagnification = 4;
     }
+    else if (type == LabelElementType::Line || type == LabelElementType::Box)
+    {
+        element.name = type == LabelElementType::Line ? "Line" : "Box";
+        element.id = element.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
+        element.text.clear();
+        element.source = FieldSource::Fixed;
+        element.variableName.clear();
+        element.xInches = 0.18;
+        element.yInches = type == LabelElementType::Line ? 0.32 : 0.12;
+        element.boxWidthInches = 1.6;
+        element.fontHeightDots = type == LabelElementType::Line ? 3 : 70;
+        element.fontWidthDots = 3;
+    }
     labelTemplate_.elements.push_back(element);
     refreshElementList();
     selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
@@ -1190,6 +1239,7 @@ void MainWindow::addElement(LabelElementType type)
 
 void MainWindow::addNumberElement()
 {
+    saveUndoState();
     LabelElement element;
     element.type = LabelElementType::Text;
     element.name = "Number";
@@ -1212,6 +1262,7 @@ void MainWindow::addNumberElement()
 
 void MainWindow::addDescriptionElement()
 {
+    saveUndoState();
     LabelElement element;
     element.type = LabelElementType::Text;
     element.name = "Description";
@@ -1234,6 +1285,118 @@ void MainWindow::addDescriptionElement()
     refreshPreview();
 }
 
+void MainWindow::addLineElement()
+{
+    addElement(LabelElementType::Line);
+}
+
+void MainWindow::addBoxElement()
+{
+    addElement(LabelElementType::Box);
+}
+
+void MainWindow::copySelectedElement()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
+    {
+        statusBar()->showMessage("Select an element to copy.");
+        return;
+    }
+    clipboardElement_ = labelTemplate_.elements[selectedElement_];
+    statusBar()->showMessage("Element copied.");
+}
+
+void MainWindow::cutSelectedElement()
+{
+    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
+    {
+        statusBar()->showMessage("Select an element to cut.");
+        return;
+    }
+    copySelectedElement();
+    deleteSelectedElement();
+}
+
+void MainWindow::pasteElement()
+{
+    if (!clipboardElement_)
+    {
+        statusBar()->showMessage("Copy an element before pasting.");
+        return;
+    }
+
+    saveUndoState();
+    LabelElement pasted = *clipboardElement_;
+    pasted.name += " Copy";
+    pasted.id = pasted.name + "_" + std::to_string(labelTemplate_.elements.size() + 1);
+    pasted.xInches += 0.06;
+    pasted.yInches += 0.06;
+    labelTemplate_.elements.push_back(pasted);
+    refreshElementList();
+    selectElement(static_cast<int>(labelTemplate_.elements.size()) - 1);
+    refreshPreview();
+    statusBar()->showMessage("Element pasted.");
+}
+
+void MainWindow::saveUndoState()
+{
+    undoStack_.push_back(labelTemplate_);
+    redoStack_.clear();
+    constexpr std::size_t maxUndo = 50;
+    if (undoStack_.size() > maxUndo)
+    {
+        undoStack_.erase(undoStack_.begin());
+    }
+}
+
+void MainWindow::restoreFromHistory(const LabelTemplate& labelTemplate)
+{
+    labelTemplate_ = labelTemplate;
+    refreshSettingsControls();
+    refreshElementList();
+    selectElement(labelTemplate_.elements.empty() ? -1 : std::min(selectedElement_, static_cast<int>(labelTemplate_.elements.size()) - 1));
+    refreshPreview();
+}
+
+void MainWindow::undo()
+{
+    if (undoStack_.empty())
+    {
+        statusBar()->showMessage("Nothing to undo.");
+        return;
+    }
+    redoStack_.push_back(labelTemplate_);
+    const LabelTemplate previous = undoStack_.back();
+    undoStack_.pop_back();
+    restoreFromHistory(previous);
+    statusBar()->showMessage("Undo.");
+}
+
+void MainWindow::redo()
+{
+    if (redoStack_.empty())
+    {
+        statusBar()->showMessage("Nothing to redo.");
+        return;
+    }
+    undoStack_.push_back(labelTemplate_);
+    const LabelTemplate next = redoStack_.back();
+    redoStack_.pop_back();
+    restoreFromHistory(next);
+    statusBar()->showMessage("Redo.");
+}
+
+void MainWindow::showHelp()
+{
+    const QString guidePath = QFileInfo("docs/USER_GUIDE.md").absoluteFilePath();
+    if (QFileInfo::exists(guidePath))
+    {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(guidePath));
+        return;
+    }
+    QMessageBox::information(this, "Help", "Open README.md or docs/USER_GUIDE.md for LabelPrinterApp instructions.");
+}
+
 void MainWindow::duplicateSelectedElement()
 {
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
@@ -1241,6 +1404,7 @@ void MainWindow::duplicateSelectedElement()
         return;
     }
 
+    saveUndoState();
     LabelElement copy = labelTemplate_.elements[selectedElement_];
     copy.name += " Copy";
     copy.id += "_copy";
@@ -1258,6 +1422,7 @@ void MainWindow::deleteSelectedElement()
     {
         return;
     }
+    saveUndoState();
     labelTemplate_.elements.erase(labelTemplate_.elements.begin() + selectedElement_);
     refreshElementList();
     selectElement(labelTemplate_.elements.empty() ? -1 : std::min(selectedElement_, static_cast<int>(labelTemplate_.elements.size() - 1)));
@@ -1273,6 +1438,7 @@ void MainWindow::moveSelectedElement(int offset)
         return;
     }
 
+    saveUndoState();
     std::swap(labelTemplate_.elements[selectedElement_], labelTemplate_.elements[newIndex]);
     refreshElementList();
     selectElement(newIndex);
@@ -1291,6 +1457,7 @@ void MainWindow::moveSelectedElementToIndex(int targetIndex)
         return;
     }
 
+    saveUndoState();
     LabelElement element = labelTemplate_.elements[selectedElement_];
     labelTemplate_.elements.erase(labelTemplate_.elements.begin() + selectedElement_);
     labelTemplate_.elements.insert(labelTemplate_.elements.begin() + targetIndex, element);
@@ -1305,7 +1472,12 @@ void MainWindow::alignSelectedLeft()
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
     LabelElement& element = labelTemplate_.elements[selectedElement_];
     if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    saveUndoState();
     element.xInches = 0.0;
+    if (element.type == LabelElementType::Text)
+    {
+        element.alignment = TextAlignment::Left;
+    }
     selectElement(selectedElement_);
     refreshPreview();
     statusBar()->showMessage("Element aligned left.");
@@ -1316,8 +1488,13 @@ void MainWindow::alignSelectedCenter()
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
     LabelElement& element = labelTemplate_.elements[selectedElement_];
     if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    saveUndoState();
     QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
     element.xInches = std::max(0.0, (labelTemplate_.settings.labelWidthInches - size.width()) / 2.0);
+    if (element.type == LabelElementType::Text)
+    {
+        element.alignment = TextAlignment::Center;
+    }
     selectElement(selectedElement_);
     refreshPreview();
     statusBar()->showMessage("Element aligned center.");
@@ -1328,8 +1505,13 @@ void MainWindow::alignSelectedRight()
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
     LabelElement& element = labelTemplate_.elements[selectedElement_];
     if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    saveUndoState();
     QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
     element.xInches = std::max(0.0, labelTemplate_.settings.labelWidthInches - size.width());
+    if (element.type == LabelElementType::Text)
+    {
+        element.alignment = TextAlignment::Right;
+    }
     selectElement(selectedElement_);
     refreshPreview();
     statusBar()->showMessage("Element aligned right.");
@@ -1340,6 +1522,7 @@ void MainWindow::alignSelectedTop()
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
     LabelElement& element = labelTemplate_.elements[selectedElement_];
     if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    saveUndoState();
     element.yInches = 0.0;
     selectElement(selectedElement_);
     refreshPreview();
@@ -1351,6 +1534,7 @@ void MainWindow::alignSelectedMiddle()
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
     LabelElement& element = labelTemplate_.elements[selectedElement_];
     if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    saveUndoState();
     QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
     element.yInches = std::max(0.0, (labelTemplate_.settings.labelHeightInches - size.height()) / 2.0);
     selectElement(selectedElement_);
@@ -1363,6 +1547,7 @@ void MainWindow::alignSelectedBottom()
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
     LabelElement& element = labelTemplate_.elements[selectedElement_];
     if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    saveUndoState();
     QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
     element.yInches = std::max(0.0, labelTemplate_.settings.labelHeightInches - size.height());
     selectElement(selectedElement_);
@@ -1378,6 +1563,7 @@ void MainWindow::distributeElementsHorizontally()
         return;
     }
 
+    saveUndoState();
     std::vector<int> indexes(labelTemplate_.elements.size());
     for (int i = 0; i < static_cast<int>(indexes.size()); ++i)
     {
@@ -1409,6 +1595,7 @@ void MainWindow::lockSelectedElement(bool locked)
     {
         return;
     }
+    saveUndoState();
     labelTemplate_.elements[selectedElement_].locked = locked;
     selectElement(selectedElement_);
     refreshPreview();
@@ -1436,6 +1623,7 @@ void MainWindow::loadTemplate()
 
 void MainWindow::loadTemplateFromPath(const QString& path)
 {
+    saveUndoState();
     labelTemplate_ = TemplateStorage::load(path.toStdString());
     refreshSettingsControls();
     refreshElementList();

@@ -14,7 +14,9 @@ std::string ZplGenerator::generate(const LabelTemplate& labelTemplate, const Var
     zpl << "^LL" << settings.labelHeightDots() << "\n";
     zpl << "^LH" << settings.marginLeftDots() << "," << settings.marginTopDots() << "\n";
     zpl << "^MN" << mediaCode(settings.mediaSensing) << "\n";
-    zpl << "^FW" << (settings.orientation == LabelOrientation::Landscape ? "R" : "N") << "\n";
+    // Label width/height already describe the stock orientation. Keep fields unrotated so
+    // printed output matches the designer canvas for landscape 4 x 2 labels.
+    zpl << "^FWN\n";
     zpl << "^MD" << settings.darkness << "\n";
     zpl << "^PR" << settings.speedIps << "\n";
 
@@ -70,6 +72,9 @@ std::string ZplGenerator::elementZpl(const LabelElement& element, const LabelTem
         return barcodeZpl(element, labelTemplate, value);
     case LabelElementType::QrCode:
         return qrZpl(element, labelTemplate, value);
+    case LabelElementType::Line:
+    case LabelElementType::Box:
+        return shapeZpl(element, labelTemplate);
     default:
         return textZpl(element, labelTemplate, value);
     }
@@ -79,9 +84,13 @@ std::string ZplGenerator::textZpl(const LabelElement& element, const LabelTempla
 {
     std::ostringstream zpl;
     int x = dots(labelTemplate, element.xInches);
-    int y = dots(labelTemplate, element.yInches);
     int boxWidth = dots(labelTemplate, element.boxWidthInches);
     int fontHeight = effectiveFontHeight(element, labelTemplate);
+    int y = dots(labelTemplate, element.yInches);
+    if (element.rotation == ElementRotation::Deg0)
+    {
+        y += fontHeight / 4;
+    }
     int fontWidth = element.autoFit ? std::max(8, element.fontWidthDots * fontHeight / std::max(1, element.fontHeightDots)) : element.fontWidthDots;
     char font = element.fontName.empty() ? '0' : element.fontName[0];
 
@@ -143,6 +152,24 @@ std::string ZplGenerator::qrZpl(const LabelElement& element, const LabelTemplate
     zpl << "^FO" << x << "," << y << "\n";
     zpl << "^BQN," << element.qrModel << "," << element.qrMagnification << "\n";
     zpl << "^FH\\^FDLA," << escapeFieldData(value) << "^FS\n";
+    return zpl.str();
+}
+
+std::string ZplGenerator::shapeZpl(const LabelElement& element, const LabelTemplate& labelTemplate)
+{
+    std::ostringstream zpl;
+    const int x = dots(labelTemplate, element.xInches);
+    const int y = dots(labelTemplate, element.yInches);
+    const int width = std::max(1, dots(labelTemplate, element.boxWidthInches));
+    const int height = element.type == LabelElementType::Line
+        ? std::max(1, element.fontWidthDots)
+        : std::max(1, element.fontHeightDots);
+    const int thickness = element.type == LabelElementType::Line
+        ? std::max(1, element.fontWidthDots)
+        : std::max(1, std::min(element.fontWidthDots, std::min(width, height) / 2));
+
+    zpl << "^FO" << x << "," << y << "\n";
+    zpl << "^GB" << width << "," << height << "," << thickness << "^FS\n";
     return zpl.str();
 }
 

@@ -17,6 +17,9 @@ public:
     void setSelectedElement(int index);
     void setGridVisible(bool visible);
     void setSnapToGrid(bool enabled);
+    void zoomIn();
+    void zoomOut();
+    void zoomFit();
 
 signals:
     void elementSelected(int index);
@@ -43,6 +46,7 @@ private:
     void drawTextElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
     void drawBarcodeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
     void drawQrElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
+    void drawShapeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
 
     LabelTemplate template_;
     VariableContext variables_;
@@ -52,6 +56,7 @@ private:
     int resizeHandle_ = -1;
     bool gridVisible_ = true;
     bool snapToGrid_ = false;
+    double zoomFactor_ = 1.0;
     QPointF dragOffsetInches_;
     QPointF resizeStartPointInches_;
     QRectF resizeStartRectInches_;

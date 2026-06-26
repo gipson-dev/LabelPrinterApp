@@ -7,7 +7,9 @@ enum class LabelElementType
     Text,
     Code128Barcode,
     Code39Barcode,
-    QrCode
+    QrCode,
+    Line,
+    Box
 };
 
 enum class ElementRotation

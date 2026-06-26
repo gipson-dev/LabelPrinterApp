@@ -3,6 +3,9 @@
 #include <QMainWindow>
 #include <QTableWidget>
 
+#include <optional>
+#include <vector>
+
 #include "core/CsvImporter.h"
 #include "core/LabelTemplate.h"
 #include "core/VariableResolver.h"
@@ -61,6 +64,16 @@ private:
     void addElement(LabelElementType type);
     void addNumberElement();
     void addDescriptionElement();
+    void addLineElement();
+    void addBoxElement();
+    void cutSelectedElement();
+    void copySelectedElement();
+    void pasteElement();
+    void undo();
+    void redo();
+    void saveUndoState();
+    void restoreFromHistory(const LabelTemplate& labelTemplate);
+    void showHelp();
     void duplicateSelectedElement();
     void deleteSelectedElement();
     void moveSelectedElement(int offset);
@@ -98,6 +111,9 @@ private:
     LabelTemplate labelTemplate_;
     CsvData csvData_;
     std::map<std::string, std::string> csvMappingOverrides_;
+    std::optional<LabelElement> clipboardElement_;
+    std::vector<LabelTemplate> undoStack_;
+    std::vector<LabelTemplate> redoStack_;
     int selectedElement_ = -1;
 
     QTabWidget* tabs_ = nullptr;

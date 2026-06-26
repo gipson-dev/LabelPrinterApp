@@ -18,6 +18,7 @@ private:
     static std::string textZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value);
     static std::string barcodeZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value);
     static std::string qrZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value);
+    static std::string shapeZpl(const LabelElement& element, const LabelTemplate& labelTemplate);
     static std::string escapeFieldData(const std::string& input);
     static std::string hexByte(unsigned char value);
     static char orientationCode(ElementRotation rotation);

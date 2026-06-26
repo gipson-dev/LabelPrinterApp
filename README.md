@@ -8,8 +8,11 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 
 - Design 2.25 x 0.75 inch Zebra labels for 203 DPI or 300 DPI printers.
 - Add text, Code 128 barcodes, Code 39 barcodes, and QR codes.
+- Add Line and Box elements for dividers and outlines.
 - Move label items by dragging them in the preview.
 - Resize selected label items from the side and corner anchors on the design canvas.
+- Use Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help from the classic toolbar/menu.
+- Preview and print text with vertical centering that more closely matches the selected text box.
 - Show or hide the design grid and enable snap-to-grid placement from the toolbar.
 - Use `Quick Print` from the Element Property Editor to print without leaving the Design tab.
 - Work in focused tabs for Design, Elements, Data, Print, Templates, and Settings.
@@ -51,6 +54,9 @@ Use the Design tab for most work:
    - Text width changes the text box width.
    - Barcode width/height changes barcode sizing.
    - QR size changes QR magnification.
+   - Line and Box resizing changes shape width and height.
+
+Text is vertically centered inside its selected text box in the designer preview, and generated ZPL applies the matching Zebra text-origin correction for normal orientation printing.
 
 For imported records, the normal field names are:
 

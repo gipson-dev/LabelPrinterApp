@@ -149,6 +149,24 @@ void PreviewWidget::setSnapToGrid(bool enabled)
     snapToGrid_ = enabled;
 }
 
+void PreviewWidget::zoomIn()
+{
+    zoomFactor_ = std::min(4.0, zoomFactor_ * 1.2);
+    update();
+}
+
+void PreviewWidget::zoomOut()
+{
+    zoomFactor_ = std::max(0.35, zoomFactor_ / 1.2);
+    update();
+}
+
+void PreviewWidget::zoomFit()
+{
+    zoomFactor_ = 1.0;
+    update();
+}
+
 void PreviewWidget::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
@@ -209,6 +227,10 @@ void PreviewWidget::paintEvent(QPaintEvent*)
         else if (element.type == LabelElementType::QrCode)
         {
             drawQrElement(painter, element, label, selected);
+        }
+        else if (element.type == LabelElementType::Line || element.type == LabelElementType::Box)
+        {
+            drawShapeElement(painter, element, label, selected);
         }
         else
         {
@@ -317,6 +339,8 @@ QRectF PreviewWidget::labelRect() const
         height = available.height();
         width = height * aspect;
     }
+    width *= zoomFactor_;
+    height *= zoomFactor_;
     return QRectF(available.center().x() - width / 2.0, available.center().y() - height / 2.0, width, height);
 }
 
@@ -338,6 +362,14 @@ QRectF PreviewWidget::elementRect(const LabelElement& element, const QRectF& lab
     {
         double size = std::max(28.0, element.qrMagnification * 0.055 * scaleY);
         return QRectF(topLeft, QSizeF(size, size));
+    }
+
+    if (element.type == LabelElementType::Line || element.type == LabelElementType::Box)
+    {
+        const double width = std::max(12.0, element.boxWidthInches * scaleX);
+        const double heightDots = element.type == LabelElementType::Line ? std::max(2, element.fontWidthDots) : std::max(2, element.fontHeightDots);
+        const double height = std::max(3.0, heightDots / static_cast<double>(template_.settings.dpi) * scaleY);
+        return QRectF(topLeft, QSizeF(width, height));
     }
 
     double module = element.barcodeModuleWidth / static_cast<double>(template_.settings.dpi) * scaleX;
@@ -473,6 +505,19 @@ void PreviewWidget::applyResize(const QPointF& labelPoint)
         const double target = std::max(rect.width(), rect.height());
         element.qrMagnification = std::clamp(static_cast<int>(std::round(target / 0.055)), 1, 10);
     }
+    else if (element.type == LabelElementType::Line || element.type == LabelElementType::Box)
+    {
+        element.boxWidthInches = std::max(minWidth, rect.width());
+        element.fontHeightDots = std::max(2, static_cast<int>(std::round(rect.height() * dpi)));
+        if (element.type == LabelElementType::Line)
+        {
+            element.fontWidthDots = std::clamp(static_cast<int>(std::round(rect.height() * dpi)), 1, 30);
+        }
+        else
+        {
+            element.fontWidthDots = std::clamp(element.fontWidthDots, 1, 30);
+        }
+    }
     else
     {
         element.boxWidthInches = std::max(minWidth, rect.width());
@@ -550,7 +595,7 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
     QFontMetrics metrics(font);
     box.setHeight(std::max(box.height(), static_cast<double>(metrics.height() + 10)));
 
-    int flags = Qt::AlignTop;
+    int flags = Qt::AlignVCenter;
     if (element.alignment == TextAlignment::Center) flags |= Qt::AlignHCenter;
     else if (element.alignment == TextAlignment::Right) flags |= Qt::AlignRight;
     else flags |= Qt::AlignLeft;
@@ -672,6 +717,28 @@ void PreviewWidget::drawQrElement(QPainter& painter, const LabelElement& element
         }
     }
     painter.setBrush(Qt::NoBrush);
+    drawSelectionFrame(painter, box, selected);
+    painter.restore();
+}
+
+void PreviewWidget::drawShapeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const
+{
+    const QRectF box = elementRect(element, label);
+    painter.save();
+    const double scaleY = label.height() / safeLabelHeight(template_);
+    const int stroke = element.type == LabelElementType::Line
+        ? std::max(1, static_cast<int>(element.fontWidthDots / static_cast<double>(template_.settings.dpi) * scaleY))
+        : std::max(1, static_cast<int>(element.fontWidthDots / 2.0));
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(Qt::black, stroke));
+    if (element.type == LabelElementType::Line)
+    {
+        painter.drawLine(box.left(), box.center().y(), box.right(), box.center().y());
+    }
+    else
+    {
+        painter.drawRect(box);
+    }
     drawSelectionFrame(painter, box, selected);
     painter.restore();
 }

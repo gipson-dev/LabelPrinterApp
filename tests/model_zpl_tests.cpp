@@ -83,7 +83,8 @@ namespace
         assert(zpl.find("^MD12") != std::string::npos);
         assert(zpl.find("^PR5") != std::string::npos);
         assert(zpl.find("^MNM") != std::string::npos);
-        assert(zpl.find("^FWR") != std::string::npos);
+        assert(zpl.find("^FWN") != std::string::npos);
+        assert(zpl.find("^FO14,15\n^A0N,28,24") != std::string::npos);
         assert(zpl.find("^BCN,48,Y,N,N") != std::string::npos);
         assert(zpl.find("^B3N,N,35,N,N") != std::string::npos);
         assert(zpl.find("^BQN,2,3") != std::string::npos);

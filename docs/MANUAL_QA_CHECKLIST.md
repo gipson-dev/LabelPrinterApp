@@ -34,6 +34,7 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Add a text element.
 - [ ] Edit the text to `QA TEXT`.
 - [ ] Select the text element and drag side/corner anchors to resize it.
+- [ ] Confirm the text stays vertically centered inside the selected text box in the preview.
 - [ ] Increase the text font size above 72 dots and confirm the text box width grows when needed.
 - [ ] Add a Code 128 barcode.
 - [ ] Set the barcode value to `QA-001`.
@@ -41,6 +42,11 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Add a QR code.
 - [ ] Set the QR value to `QA QR TEST`.
 - [ ] Select the QR code and drag side/corner anchors to resize it.
+- [ ] Add a Line and confirm it appears in preview/ZPL.
+- [ ] Add a Box and confirm it appears in preview/ZPL.
+- [ ] Use Copy, Paste, Cut, Undo, and Redo from the toolbar/menu.
+- [ ] Use Zoom In, Zoom Out, and Fit.
+- [ ] Click Help and confirm the user guide opens or a fallback message appears.
 - [ ] Move elements by dragging in the preview.
 - [ ] Toggle `Grid` off and confirm the grid hides.
 - [ ] Toggle `Grid` on and confirm the grid shows.
@@ -71,6 +77,7 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Confirm ZPL opens and uses the selected template and entered QA values.
 - [ ] Click `Print Test Label`.
 - [ ] Confirm one test label prints.
+- [ ] Confirm printed text placement is close to the canvas preview and not pinned to the top or bottom of the selected text box.
 - [ ] Confirm `logs\print_history.csv` is created or updated.
 - [ ] Confirm print history includes success/failure, printer, template, mode, rows, and copies.
 

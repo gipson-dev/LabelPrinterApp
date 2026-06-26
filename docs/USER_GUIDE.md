@@ -19,11 +19,20 @@ For Uline S-8599 at 203 DPI, the calculated size should show `457 x 152` dots.
 2. Select the blank canvas from `Canvas Template`.
 3. Click `Number`.
 4. Click `Description`.
-5. Move the fields by dragging them on the canvas.
-6. Resize the selected field by dragging the blue side or corner anchors.
-7. Use the right-side `Element Property Editor` to adjust formatting, data source, position, barcode settings, and print options.
+5. Add `Line` or `Box` elements when you need dividers or outlines.
+6. Move the fields by dragging them on the canvas.
+7. Resize the selected field by dragging the blue side or corner anchors.
+8. Use the right-side `Element Property Editor` to adjust formatting, data source, position, barcode settings, and print options.
+
+The toolbar and menus include common editor commands:
+
+- `Cut`, `Copy`, and `Paste` for selected elements.
+- `Undo` and `Redo` for common design changes.
+- `Zoom In`, `Zoom Out`, and `Fit` for the design canvas.
+- `Help` opens this user guide when it is available in the packaged docs folder.
 
 The standard data fields are `Number` and `Description`.
+Text is vertically centered in its selected box on the canvas, and normal text printing uses the same corrected origin so the printed label stays close to the designer preview.
 
 ## Resize Elements
 
@@ -37,6 +46,7 @@ When an element is selected, blue anchors appear around it.
 - Barcode height changes bar height.
 - Barcode width adjusts module width.
 - QR resizing adjusts QR magnification.
+- Line and Box resizing changes shape width and height.
 
 Use larger font sizes from the Font Size dropdown when you need bold shelf-style or item-number labels. Font sizes above `72 dots` are available.
 

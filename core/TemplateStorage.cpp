@@ -15,6 +15,8 @@ namespace
         case LabelElementType::Code128Barcode: return "Code128";
         case LabelElementType::Code39Barcode: return "Code39";
         case LabelElementType::QrCode: return "QRCode";
+        case LabelElementType::Line: return "Line";
+        case LabelElementType::Box: return "Box";
         default: return "Text";
         }
     }
@@ -24,6 +26,8 @@ namespace
         if (value == "Code128") return LabelElementType::Code128Barcode;
         if (value == "Code39") return LabelElementType::Code39Barcode;
         if (value == "QRCode") return LabelElementType::QrCode;
+        if (value == "Line") return LabelElementType::Line;
+        if (value == "Box") return LabelElementType::Box;
         return LabelElementType::Text;
     }
 

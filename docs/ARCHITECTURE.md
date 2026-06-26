@@ -51,10 +51,10 @@ LabelPrinterApp/
 ## Core Classes
 
 - `PrinterSettings` stores printer name, DPI, label size, margins, gap, media sensing mode, orientation, darkness, speed, and copies.
-- `LabelElement` models text, Code 128, Code 39, and QR elements. It stores content, source mode, variable name, prefix/suffix, X/Y position, text formatting, barcode settings, QR settings, `doNotPrint`, and `locked`.
+- `LabelElement` models text, Code 128, Code 39, QR, Line, and Box elements. It stores content, source mode, variable name, prefix/suffix, X/Y position, text formatting, shape dimensions, barcode settings, QR settings, `doNotPrint`, and `locked`.
 - `LabelTemplate` owns printer settings and the ordered element list. Element order is used as the preview and print layer order.
 - `VariableResolver` resolves `{Placeholders}`, date/time values, serial numbers, record indexes, and prefix/suffix formatting before preview/print.
-- `ZplGenerator` converts templates into ZPL using `^PW`, `^LL`, `^LH`, `^MN`, `^FW`, text, Code 128, Code 39, and QR commands. Field data is escaped for unsafe ZPL characters.
+- `ZplGenerator` converts templates into ZPL using `^PW`, `^LL`, `^LH`, `^MN`, `^FW`, text, Code 128, Code 39, QR, and graphic box commands. Field data is escaped for unsafe ZPL characters, and normal text output applies the same visual-origin correction used by the designer preview.
 - `ZebraPrinter` enumerates installed Windows printers and sends raw ZPL using `OpenPrinterA`, `StartDocPrinterA`, `WritePrinter`, and `ClosePrinter`.
 - `TemplateStorage` saves and loads JSON templates with nlohmann/json, including the current lock and do-not-print element flags.
 - `CsvImporter` parses quoted CSV data and detects headers.
@@ -64,7 +64,7 @@ LabelPrinterApp/
 ## UI Classes
 
 - `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, and raw print commands.
-- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, text/barcode/QR previews, selection handles, cursor coordinates, drag-to-move positioning, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. Locked elements cannot be dragged or resized.
+- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, vertically centered text, barcode/QR/shape previews, selection handles, cursor coordinates, drag-to-move positioning, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. Locked elements cannot be dragged or resized.
 - `ElementEditorWidget` is the right-side `Element Property Editor`. Its section buttons are true filtered pages:
   - `Text`: name, type, and element text
   - `Formatting`: font size, width, bold, italic, underline, wrap, auto-fit, max lines, and alignment
@@ -89,7 +89,7 @@ The first version is intentionally simple. It logs successful and failed print s
 The Design tab uses a classic label-designer layout:
 
 - Left readable toolbox: Canvas Template selector, Select, Text, Number, Description, Barcode, QR Code, Date/Time, Serial #, Line, Box, and Image.
-- Center preview canvas with rulers, optional grid, printable margin, and selection handles.
+- Center preview canvas with rulers, optional grid, printable margin, vertically centered text, shape rendering, and selection handles.
 - Right `Element Property Editor` with filtered property pages.
 - Bottom layout toolbar:
   - Align left, center, right, top, middle, and bottom
@@ -107,7 +107,7 @@ Persisted values include the window geometry/state, active tab, selected printer
 
 - Version 1: basic input, font size/width, X/Y position, copies, valid ZPL, and RAW printing.
 - Version 2: Qt GUI, preview, multiple elements, add/edit/delete, JSON templates, and printer selection.
-- Version 3: Code 128, Code 39, QR, barcode height, module width, and human-readable toggle.
+- Version 3: Code 128, Code 39, QR, Line, Box, barcode height, module width, human-readable toggle, and shape output.
 - Version 4: placeholders, prompt-at-print values, date/time tokens, serial numbers, prefix/suffix, and serial ranges.
 - Version 5: CSV and `.xlsx` import, header mapping, record preview, selected/all row printing, Number/Description field workflow, and placeholder replacement in text/barcode/QR fields.
 

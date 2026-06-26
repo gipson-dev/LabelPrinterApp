@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-26
+
+- Centered text vertically in the designer preview and adjusted generated ZPL text origins so printed Zebra labels match the selected text box more closely.
+- Fixed 4 x 2 landscape printing so generated ZPL keeps fields unrotated while respecting the designer canvas orientation.
+- Wired classic toolbar/menu controls for Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help.
+- Added Line and Box elements, including template storage, inspector support, preview rendering, resize behavior, and ZPL `^GB` output.
+- Updated README, roadmap, user guide, architecture notes, UI notes, release notes, calibration notes, and manual QA coverage for the current beta workflow.
+
 ## 2026-06-22
 
 - Added selected-element resize handles so side and corner anchors can adjust text width/font height, barcode width/height, and QR size directly on the design canvas.

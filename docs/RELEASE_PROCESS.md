@@ -70,6 +70,9 @@ The current beta includes:
 - CSV and Excel import from the Data tab.
 - Selected/all imported record printing.
 - Canvas drag-to-move and anchor resizing.
+- Vertically centered text preview with corrected Zebra text-origin output.
+- Line and Box design elements with preview, resizing, template storage, and ZPL output.
+- Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help actions in the classic toolbar/menu.
 - Font sizes above 72 dots.
 - Zebra RAW ZPL printing through Windows printers.
 - Persistent app settings and print history.
