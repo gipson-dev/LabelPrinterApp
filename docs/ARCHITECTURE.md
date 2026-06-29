@@ -35,6 +35,7 @@ LabelPrinterApp/
 |   `-- excel_records_sample.csv
 |-- docs/
 |   |-- ARCHITECTURE.md
+|   |-- KNOWN_ISSUES.md
 |   |-- MANUAL_QA_CHECKLIST.md
 |   |-- PRINTER_CALIBRATION.md
 |   |-- RELEASE_PROCESS.md
@@ -136,6 +137,20 @@ cmake -S . -B build -DCMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
 cmake --build build --config Release --parallel 1
 ctest --test-dir build -C Release --output-on-failure
 ```
+
+## VS Code C/C++ IntelliSense
+
+The C++ extension reads `.vscode/c_cpp_properties.json` for IntelliSense include paths. The workspace includes:
+
+- `${workspaceFolder}`
+- `${workspaceFolder}/core`
+- `${workspaceFolder}/ui`
+- `${workspaceFolder}/build/_deps/nlohmann_json-src/include`
+- `${workspaceFolder}/build-core/_deps/nlohmann_json-src/include`
+- `${workspaceFolder}/build-qt-verify/_deps/nlohmann_json-src/include`
+- Qt include folders from `CMAKE_PREFIX_PATH` or `C:\Qt\6.8.3\msvc2022_64`
+
+This resolves the `nlohmann/json.hpp` include used by `core/TemplateStorage.cpp` after the project has been configured or built at least once.
 
 ## Packaging
 

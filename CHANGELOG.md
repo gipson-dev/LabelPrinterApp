@@ -3,6 +3,10 @@
 ## 2026-06-26
 
 - Centered text vertically in the designer preview and adjusted generated ZPL text origins so printed Zebra labels match the selected text box more closely.
+- Added in-place canvas editing for text elements: double-click a text field, edit inside the selected element, press Enter or click away to commit, or press Escape to cancel.
+- Changed new Text, Number, and Serial # elements to use regular font weight by default instead of auto-enabling Bold.
+- Fixed VS Code C/C++ IntelliSense for `core/TemplateStorage.cpp` by adding fetched `nlohmann/json.hpp` include paths to `.vscode/c_cpp_properties.json`.
+- Reworked the roadmap from the project planning notes with release status, phase detail, version plan, manual QA summary, and remaining work.
 - Fixed 4 x 2 landscape printing so generated ZPL keeps fields unrotated while respecting the designer canvas orientation.
 - Wired classic toolbar/menu controls for Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help.
 - Added Line and Box elements, including template storage, inspector support, preview rendering, resize behavior, and ZPL `^GB` output.

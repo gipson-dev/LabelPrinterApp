@@ -16,6 +16,13 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Switch DPI back to 203.
 - [ ] Confirm Orientation defaults to Landscape.
 
+## Developer Workspace
+
+- [ ] Run the normal configure/build once so CMake fetches `nlohmann/json`.
+- [ ] Open `core\TemplateStorage.cpp` in VS Code.
+- [ ] Confirm the C/C++ extension no longer reports `cannot open source file "nlohmann/json.hpp"`.
+- [ ] If the squiggle remains, run `C/C++: Reset IntelliSense Database` and reopen the file.
+
 ## Template Workflow
 
 - [ ] Open the Templates tab.
@@ -33,6 +40,8 @@ Use this checklist before tagging or publishing a beta/release build.
 
 - [ ] Add a text element.
 - [ ] Edit the text to `QA TEXT`.
+- [ ] Double-click the text element, edit it in place on the canvas, press Enter, and confirm the Element Property Editor updates.
+- [ ] Double-click the text element again, type a temporary value, press Escape, and confirm the previous text remains.
 - [ ] Select the text element and drag side/corner anchors to resize it.
 - [ ] Confirm the text stays vertically centered inside the selected text box in the preview.
 - [ ] Increase the text font size above 72 dots and confirm the text box width grows when needed.

@@ -11,6 +11,7 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Add Line and Box elements for dividers and outlines.
 - Move label items by dragging them in the preview.
 - Resize selected label items from the side and corner anchors on the design canvas.
+- Double-click text elements to edit their text directly on the canvas.
 - Use Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help from the classic toolbar/menu.
 - Preview and print text with vertical centering that more closely matches the selected text box.
 - Show or hide the design grid and enable snap-to-grid placement from the toolbar.
@@ -57,6 +58,7 @@ Use the Design tab for most work:
    - Line and Box resizing changes shape width and height.
 
 Text is vertically centered inside its selected text box in the designer preview, and generated ZPL applies the matching Zebra text-origin correction for normal orientation printing.
+Double-click a text element to edit it in place; press Enter or click away to save the edit, or press Escape to cancel.
 
 For imported records, the normal field names are:
 
@@ -181,6 +183,16 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
+## VS Code IntelliSense
+
+The app uses `nlohmann/json.hpp` in `core/TemplateStorage.cpp`. CMake fetches that header into `build\_deps\nlohmann_json-src\include` during configure/build, and `.vscode/c_cpp_properties.json` includes the common local fetch folders so the VS Code C/C++ extension can parse the same translation units as the build.
+
+If IntelliSense still reports `cannot open source file "nlohmann/json.hpp"`:
+
+1. Run a normal configure/build once so `build\_deps\nlohmann_json-src\include` exists.
+2. Use `C/C++: Reset IntelliSense Database` from the VS Code command palette.
+3. Reopen `core\TemplateStorage.cpp`.
+
 ## Packaging
 
 Build a distributable folder:
@@ -217,6 +229,7 @@ See [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) for the full release chec
 - Architecture notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Classic UI redesign notes are in [docs/UI_REDESIGN.md](docs/UI_REDESIGN.md).
 - Manual QA checklist is in [docs/MANUAL_QA_CHECKLIST.md](docs/MANUAL_QA_CHECKLIST.md).
+- Known beta issues are in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 - Printer calibration notes are in [docs/PRINTER_CALIBRATION.md](docs/PRINTER_CALIBRATION.md).
 - User workflow notes are in [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
 - Release steps are in [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md).

@@ -5,6 +5,9 @@
 #include "core/LabelTemplate.h"
 #include "core/VariableResolver.h"
 
+class QLineEdit;
+class QResizeEvent;
+
 class PreviewWidget : public QWidget
 {
     Q_OBJECT
@@ -28,10 +31,13 @@ signals:
     void cursorPositionChanged(double xInches, double yInches);
 
 protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
     QRectF labelRect() const;
@@ -42,6 +48,10 @@ private:
     int resizeHandleAt(const QPointF& point, int elementIndex) const;
     QRectF elementRectInches(const LabelElement& element, const QRectF& label) const;
     void applyResize(const QPointF& labelPoint);
+    void beginInlineTextEdit(int elementIndex);
+    void commitInlineTextEdit();
+    void cancelInlineTextEdit();
+    void updateInlineEditorGeometry();
     void drawGrid(QPainter& painter, const QRectF& label) const;
     void drawTextElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
     void drawBarcodeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
@@ -57,6 +67,8 @@ private:
     bool gridVisible_ = true;
     bool snapToGrid_ = false;
     double zoomFactor_ = 1.0;
+    QLineEdit* inlineEditor_ = nullptr;
+    int editingElement_ = -1;
     QPointF dragOffsetInches_;
     QPointF resizeStartPointInches_;
     QRectF resizeStartRectInches_;

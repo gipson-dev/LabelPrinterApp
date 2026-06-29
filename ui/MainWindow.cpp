@@ -487,7 +487,7 @@ QWidget* MainWindow::buildDesignTab()
             e.serialWidth = 4;
             e.fontHeightDots = 64;
             e.fontWidthDots = 48;
-            e.bold = true;
+            e.bold = false;
             refreshElementList();
             selectElement(static_cast<int>(labelTemplate_.elements.size() - 1));
             refreshPreview();
@@ -1202,7 +1202,7 @@ void MainWindow::addElement(LabelElementType type)
         element.boxWidthInches = 1.85;
         element.fontHeightDots = 62;
         element.fontWidthDots = 46;
-        element.bold = true;
+        element.bold = false;
     }
     else if (type == LabelElementType::Code128Barcode || type == LabelElementType::Code39Barcode)
     {
@@ -1252,7 +1252,7 @@ void MainWindow::addNumberElement()
     element.boxWidthInches = 1.35;
     element.fontHeightDots = 54;
     element.fontWidthDots = 40;
-    element.bold = true;
+    element.bold = false;
     element.autoFit = true;
     labelTemplate_.elements.push_back(element);
     refreshElementList();

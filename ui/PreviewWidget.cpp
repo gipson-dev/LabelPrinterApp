@@ -1,5 +1,8 @@
 #include "ui/PreviewWidget.h"
 
+#include <QEvent>
+#include <QKeyEvent>
+#include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QFontMetrics>
@@ -123,6 +126,7 @@ PreviewWidget::PreviewWidget(QWidget* parent)
 void PreviewWidget::setTemplate(const LabelTemplate& labelTemplate)
 {
     template_ = labelTemplate;
+    updateInlineEditorGeometry();
     update();
 }
 
@@ -135,6 +139,10 @@ void PreviewWidget::setVariables(const VariableContext& context)
 void PreviewWidget::setSelectedElement(int index)
 {
     selectedElement_ = index;
+    if (inlineEditor_ && editingElement_ != selectedElement_)
+    {
+        commitInlineTextEdit();
+    }
     update();
 }
 
@@ -152,19 +160,49 @@ void PreviewWidget::setSnapToGrid(bool enabled)
 void PreviewWidget::zoomIn()
 {
     zoomFactor_ = std::min(4.0, zoomFactor_ * 1.2);
+    updateInlineEditorGeometry();
     update();
 }
 
 void PreviewWidget::zoomOut()
 {
     zoomFactor_ = std::max(0.35, zoomFactor_ / 1.2);
+    updateInlineEditorGeometry();
     update();
 }
 
 void PreviewWidget::zoomFit()
 {
     zoomFactor_ = 1.0;
+    updateInlineEditorGeometry();
     update();
+}
+
+bool PreviewWidget::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == inlineEditor_)
+    {
+        if (event->type() == QEvent::KeyPress)
+        {
+            auto* keyEvent = static_cast<QKeyEvent*>(event);
+            if (keyEvent->key() == Qt::Key_Escape)
+            {
+                cancelInlineTextEdit();
+                return true;
+            }
+            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter)
+            {
+                commitInlineTextEdit();
+                return true;
+            }
+        }
+        else if (event->type() == QEvent::FocusOut)
+        {
+            commitInlineTextEdit();
+            return false;
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void PreviewWidget::paintEvent(QPaintEvent*)
@@ -280,6 +318,24 @@ void PreviewWidget::mousePressEvent(QMouseEvent* event)
     update();
 }
 
+void PreviewWidget::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    const int hit = hitTest(event->position());
+    if (hit >= 0 && hit < static_cast<int>(template_.elements.size()))
+    {
+        selectedElement_ = hit;
+        emit elementSelected(hit);
+        const LabelElement& element = template_.elements[hit];
+        if (element.type == LabelElementType::Text && !element.locked)
+        {
+            beginInlineTextEdit(hit);
+            event->accept();
+            return;
+        }
+    }
+    QWidget::mouseDoubleClickEvent(event);
+}
+
 void PreviewWidget::mouseMoveEvent(QMouseEvent* event)
 {
     QRectF label = labelRect();
@@ -326,6 +382,12 @@ void PreviewWidget::mouseReleaseEvent(QMouseEvent*)
     draggingElement_ = -1;
     resizingElement_ = -1;
     resizeHandle_ = -1;
+}
+
+void PreviewWidget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateInlineEditorGeometry();
 }
 
 QRectF PreviewWidget::labelRect() const
@@ -441,6 +503,106 @@ QRectF PreviewWidget::elementRectInches(const LabelElement& element, const QRect
     const QPointF topLeft = widgetToLabel(widgetRect.topLeft(), label);
     const QPointF bottomRight = widgetToLabel(widgetRect.bottomRight(), label);
     return QRectF(topLeft, bottomRight).normalized();
+}
+
+void PreviewWidget::beginInlineTextEdit(int elementIndex)
+{
+    if (elementIndex < 0 || elementIndex >= static_cast<int>(template_.elements.size()))
+    {
+        return;
+    }
+    const LabelElement& element = template_.elements[elementIndex];
+    if (element.type != LabelElementType::Text || element.locked)
+    {
+        return;
+    }
+
+    if (inlineEditor_)
+    {
+        commitInlineTextEdit();
+    }
+
+    editingElement_ = elementIndex;
+    draggingElement_ = -1;
+    resizingElement_ = -1;
+    resizeHandle_ = -1;
+    inlineEditor_ = new QLineEdit(this);
+    inlineEditor_->setText(QString::fromStdString(element.text));
+    inlineEditor_->setFrame(true);
+    inlineEditor_->setAlignment(Qt::AlignVCenter | (element.alignment == TextAlignment::Center
+        ? Qt::AlignHCenter
+        : element.alignment == TextAlignment::Right ? Qt::AlignRight : Qt::AlignLeft));
+    inlineEditor_->setStyleSheet("QLineEdit { background: white; border: 2px solid #0054be; padding: 1px 3px; }");
+    inlineEditor_->installEventFilter(this);
+    connect(inlineEditor_, &QLineEdit::editingFinished, this, &PreviewWidget::commitInlineTextEdit);
+    updateInlineEditorGeometry();
+    inlineEditor_->show();
+    inlineEditor_->setFocus(Qt::MouseFocusReason);
+    inlineEditor_->selectAll();
+    update();
+}
+
+void PreviewWidget::commitInlineTextEdit()
+{
+    if (!inlineEditor_)
+    {
+        return;
+    }
+
+    const int index = editingElement_;
+    const QString text = inlineEditor_->text();
+    QLineEdit* editor = inlineEditor_;
+    inlineEditor_ = nullptr;
+    editingElement_ = -1;
+    editor->removeEventFilter(this);
+    editor->deleteLater();
+
+    if (index >= 0 && index < static_cast<int>(template_.elements.size()))
+    {
+        LabelElement element = template_.elements[index];
+        if (element.type == LabelElementType::Text && !element.locked && element.text != text.toStdString())
+        {
+            element.text = text.toStdString();
+            template_.elements[index] = element;
+            emit elementChanged(index, element);
+        }
+    }
+    update();
+}
+
+void PreviewWidget::cancelInlineTextEdit()
+{
+    if (!inlineEditor_)
+    {
+        return;
+    }
+
+    QLineEdit* editor = inlineEditor_;
+    inlineEditor_ = nullptr;
+    editingElement_ = -1;
+    editor->removeEventFilter(this);
+    editor->deleteLater();
+    update();
+}
+
+void PreviewWidget::updateInlineEditorGeometry()
+{
+    if (!inlineEditor_ || editingElement_ < 0 || editingElement_ >= static_cast<int>(template_.elements.size()))
+    {
+        return;
+    }
+
+    const QRectF box = elementRect(template_.elements[editingElement_], labelRect()).adjusted(6, 4, -6, -4);
+    inlineEditor_->setGeometry(box.toAlignedRect());
+
+    const double scaleY = labelRect().height() / safeLabelHeight(template_);
+    const int pixelSize = std::max(12, static_cast<int>(template_.elements[editingElement_].fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
+    QFont font("Arial");
+    font.setPixelSize(pixelSize);
+    font.setBold(template_.elements[editingElement_].bold);
+    font.setItalic(template_.elements[editingElement_].italic);
+    font.setUnderline(template_.elements[editingElement_].underline);
+    inlineEditor_->setFont(font);
 }
 
 void PreviewWidget::applyResize(const QPointF& labelPoint)

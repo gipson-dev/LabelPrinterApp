@@ -22,7 +22,8 @@ For Uline S-8599 at 203 DPI, the calculated size should show `457 x 152` dots.
 5. Add `Line` or `Box` elements when you need dividers or outlines.
 6. Move the fields by dragging them on the canvas.
 7. Resize the selected field by dragging the blue side or corner anchors.
-8. Use the right-side `Element Property Editor` to adjust formatting, data source, position, barcode settings, and print options.
+8. Double-click text on the canvas when you want to edit it in place.
+9. Use the right-side `Element Property Editor` to adjust formatting, data source, position, barcode settings, and print options.
 
 The toolbar and menus include common editor commands:
 
@@ -33,6 +34,7 @@ The toolbar and menus include common editor commands:
 
 The standard data fields are `Number` and `Description`.
 Text is vertically centered in its selected box on the canvas, and normal text printing uses the same corrected origin so the printed label stays close to the designer preview.
+For in-place text edits, press Enter or click away to save, or press Escape to cancel.
 
 ## Resize Elements
 

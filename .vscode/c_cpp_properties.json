@@ -6,6 +6,9 @@
                 "${workspaceFolder}",
                 "${workspaceFolder}/core",
                 "${workspaceFolder}/ui",
+                "${workspaceFolder}/build/_deps/nlohmann_json-src/include",
+                "${workspaceFolder}/build-core/_deps/nlohmann_json-src/include",
+                "${workspaceFolder}/build-qt-verify/_deps/nlohmann_json-src/include",
                 "${env:CMAKE_PREFIX_PATH}/include",
                 "C:/Qt/6.8.3/msvc2022_64/include"
             ],

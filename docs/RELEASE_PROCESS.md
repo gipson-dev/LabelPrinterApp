@@ -30,6 +30,8 @@ Before tagging a release:
 
 4. Open `dist\LabelPrinterApp\LabelPrinterApp.exe`.
 5. Run the manual checks in `docs\MANUAL_QA_CHECKLIST.md`.
+6. Review `docs\KNOWN_ISSUES.md` and update it with any new release-specific limitations.
+7. In VS Code, open `core\TemplateStorage.cpp` and confirm C/C++ IntelliSense resolves `nlohmann/json.hpp` after configure/build.
 
 ## Publish A Beta Release
 
@@ -76,3 +78,4 @@ The current beta includes:
 - Font sizes above 72 dots.
 - Zebra RAW ZPL printing through Windows printers.
 - Persistent app settings and print history.
+- VS Code C/C++ include paths for fetched `nlohmann/json.hpp` so local developer squiggles match the CMake build.
