@@ -18,5 +18,16 @@ Thanks for your interest in contributing to LabelPrinterApp.
 
 ## Development Notes
 
-The project is still being initialized, so build, test, and formatting commands will
-be documented once the application stack is selected.
+LabelPrinterApp is a Windows C++17 Qt 6 Widgets application built with CMake. See
+[README.md](README.md#building-from-source) for setup requirements and
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the project structure.
+
+Build and test locally with:
+
+```powershell
+$env:CMAKE_PREFIX_PATH = "C:\Qt\6.8.3\msvc2022_64"
+.\scripts\build-and-test.ps1 -Config Release
+```
+
+This configures and builds the app and `c-updater`, then runs `ctest`. There is no
+separate formatting step; match the existing code style in the file you are editing.

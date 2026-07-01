@@ -16,5 +16,7 @@ Include as much detail as possible:
 
 ## Supported Versions
 
-This project is in early setup and does not have released versions yet. Security
-support details will be updated once releases begin.
+LabelPrinterApp is in active beta. Only the latest published GitHub release
+(currently `v1.0.0`) is supported; please update to the latest release, including
+through `Help > Check for Updates`, before reporting an issue. Older beta tags
+(`v0.1.0-beta.x`) are not maintained.
