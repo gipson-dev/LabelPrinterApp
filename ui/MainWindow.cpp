@@ -1,5 +1,6 @@
 #include "ui/MainWindow.h"
 
+#include <QAbstractItemView>
 #include <QAction>
 #include <QCheckBox>
 #include <QCloseEvent>
@@ -39,6 +40,7 @@
 #include <QTableWidgetItem>
 #include <QTextEdit>
 #include <QTextStream>
+#include <QTimer>
 #include <QToolBar>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -47,6 +49,9 @@
 #include <cmath>
 #include <set>
 
+#include "core/AppUpdater.h"
+#include "core/BarcodeMetrics.h"
+#include "core/SampleData.h"
 #include "core/TemplateStorage.h"
 #include "core/VariableResolver.h"
 #include "core/ZebraPrinter.h"
@@ -87,7 +92,11 @@ QSizeF estimatedElementSizeInches(const LabelTemplate& labelTemplate, const Labe
             std::max(0.01, static_cast<double>(std::max(1, element.fontHeightDots)) / dpi));
     }
 
-    const double width = std::max(0.25, static_cast<double>(std::max<std::size_t>(8, element.text.size())) * element.barcodeModuleWidth * 9.0 / dpi);
+    std::string sample = element.text.empty() ? element.name : element.text;
+    VariableContext context;
+    SampleData::fillMissingForElement(element, context);
+    sample = VariableResolver::elementValue(element, context);
+    const double width = std::max(0.25, static_cast<double>(BarcodeMetrics::barcodeWidthDots(element, sample)) / dpi);
     const double humanText = element.humanReadable ? std::max(0.05, element.barcodeHeightDots * 0.22 / dpi) : 0.0;
     return QSizeF(width, std::max(0.12, element.barcodeHeightDots / dpi) + humanText);
 }
@@ -117,6 +126,49 @@ MainWindow::MainWindow(QWidget* parent)
     loadDefaultTemplate();
     refreshPrinterList();
     loadAppSettings();
+
+    appUpdater_ = new AppUpdater(this);
+    connect(appUpdater_, &AppUpdater::upToDate, this, [this] {
+        if (updateCheckIsManual_)
+        {
+            QMessageBox::information(this, "Check for Updates", "LabelPrinterApp is up to date.");
+        }
+        else
+        {
+            statusBar()->showMessage("LabelPrinterApp is up to date.", 5000);
+        }
+    });
+    connect(appUpdater_, &AppUpdater::checkFailed, this, [this](const QString& error) {
+        if (updateCheckIsManual_)
+        {
+            QMessageBox::warning(this, "Check for Updates", "Could not check for updates: " + error);
+        }
+        else
+        {
+            statusBar()->showMessage("Update check failed: " + error, 5000);
+        }
+    });
+    connect(appUpdater_, &AppUpdater::updateReady, this, [this](const QString& version) {
+        statusBar()->showMessage("LabelPrinterApp " + version + " downloaded.", 5000);
+        const auto choice = QMessageBox::question(
+            this,
+            "Update Ready",
+            "LabelPrinterApp " + version + " has been downloaded. Restart now to apply it?",
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::Yes);
+        if (choice == QMessageBox::Yes && appUpdater_->applyDownloadedUpdateAndRestart())
+        {
+            close();
+        }
+    });
+
+    if (appUpdater_->isAvailable())
+    {
+        QTimer::singleShot(4000, this, [this] {
+            updateCheckIsManual_ = false;
+            appUpdater_->checkForUpdates();
+        });
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -201,6 +253,7 @@ void MainWindow::buildUi()
         }
     });
     connect(preview_, &PreviewWidget::elementSelected, this, &MainWindow::selectElement);
+    connect(preview_, &PreviewWidget::elementsSelected, this, &MainWindow::selectElements);
     connect(preview_, &PreviewWidget::cursorPositionChanged, this, [this](double x, double y) {
         if (statusPositionLabel_)
         {
@@ -215,6 +268,25 @@ void MainWindow::buildUi()
             selectElement(index);
             refreshPreview();
         }
+    });
+    connect(preview_, &PreviewWidget::elementsChanged, this, [this](const QList<int>& indexes, const QList<LabelElement>& elements) {
+        if (indexes.size() != elements.size())
+        {
+            return;
+        }
+        saveUndoState();
+        QList<int> validIndexes;
+        for (int i = 0; i < indexes.size(); ++i)
+        {
+            const int index = indexes[i];
+            if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()))
+            {
+                labelTemplate_.elements[index] = elements[i];
+                validIndexes.append(index);
+            }
+        }
+        selectElements(validIndexes);
+        refreshPreview();
     });
     connect(preview_, &PreviewWidget::elementChanged, this, [this](int index, const LabelElement& element) {
         if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()))
@@ -309,6 +381,7 @@ void MainWindow::buildMenus()
 
     auto* help = menuBar()->addMenu("Help");
     help->addAction("User Guide", this, &MainWindow::showHelp);
+    help->addAction("Check for Updates", this, &MainWindow::checkForUpdates);
     help->addAction("About", this, [this] {
         QMessageBox::about(this, "About LabelPrinterApp", "LabelPrinterApp designs and prints Zebra ZPL labels.");
     });
@@ -460,9 +533,12 @@ QWidget* MainWindow::buildDesignTab()
         if (!labelTemplate_.elements.empty())
         {
             LabelElement& e = labelTemplate_.elements.back();
-            e.name = "Date Time";
-            e.text = "{Date} {Time}";
+            e.name = "Date/Time";
+            e.id = "DateTime_" + std::to_string(labelTemplate_.elements.size());
+            e.text = "{DateTime}";
             e.source = FieldSource::Fixed;
+            e.variableName.clear();
+            e.boxWidthInches = 1.55;
             e.fontHeightDots = 36;
             e.fontWidthDots = 28;
             e.bold = false;
@@ -595,6 +671,7 @@ QWidget* MainWindow::buildElementsTab()
     auto* listGroup = new QGroupBox("Element List", tab);
     auto* listLayout = new QVBoxLayout(listGroup);
     elementList_ = new QListWidget(listGroup);
+    elementList_->setSelectionMode(QAbstractItemView::ExtendedSelection);
     listLayout->addWidget(elementList_);
 
     auto* buttons = new QHBoxLayout;
@@ -1159,7 +1236,14 @@ void MainWindow::refreshSettingsControls()
 void MainWindow::refreshPreview()
 {
     preview_->setTemplate(labelTemplate_);
-    preview_->setSelectedElement(selectedElement_);
+    if (selectedElements_.size() > 1)
+    {
+        preview_->setSelectedElements(QList<int>(selectedElements_.begin(), selectedElements_.end()));
+    }
+    else
+    {
+        preview_->setSelectedElement(selectedElement_);
+    }
     updateStatusSummary();
 }
 
@@ -1397,6 +1481,23 @@ void MainWindow::showHelp()
     QMessageBox::information(this, "Help", "Open README.md or docs/USER_GUIDE.md for LabelPrinterApp instructions.");
 }
 
+void MainWindow::checkForUpdates()
+{
+    if (!appUpdater_ || !appUpdater_->isAvailable())
+    {
+        const QUrl releasesUrl("https://github.com/gipson-dev/LabelPrinterApp/releases");
+        QDesktopServices::openUrl(releasesUrl);
+        QMessageBox::information(
+            this,
+            "Check for Updates",
+            "The update checker is unavailable right now. Opened the releases page instead.");
+        return;
+    }
+    updateCheckIsManual_ = true;
+    statusBar()->showMessage("Checking for updates...", 4000);
+    appUpdater_->checkForUpdates();
+}
+
 void MainWindow::duplicateSelectedElement()
 {
     if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
@@ -1469,106 +1570,233 @@ void MainWindow::moveSelectedElementToIndex(int targetIndex)
 
 void MainWindow::alignSelectedLeft()
 {
-    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
-    LabelElement& element = labelTemplate_.elements[selectedElement_];
-    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    const std::vector<int> indexes = selectedEditableIndexes();
+    if (indexes.empty()) { statusBar()->showMessage("Select unlocked elements before aligning."); return; }
     saveUndoState();
-    element.xInches = 0.0;
-    if (element.type == LabelElementType::Text)
+    if (indexes.size() == 1)
     {
-        element.alignment = TextAlignment::Left;
+        LabelElement& element = labelTemplate_.elements[indexes.front()];
+        element.xInches = 0.0;
+        if (element.type == LabelElementType::Text ||
+            element.type == LabelElementType::Code128Barcode ||
+            element.type == LabelElementType::Code39Barcode)
+        {
+            element.alignment = TextAlignment::Left;
+        }
     }
-    selectElement(selectedElement_);
+    else
+    {
+        double target = labelTemplate_.elements[indexes.front()].xInches;
+        for (int index : indexes)
+        {
+            target = std::min(target, labelTemplate_.elements[index].xInches);
+        }
+        for (int index : indexes)
+        {
+            labelTemplate_.elements[index].xInches = target;
+        }
+    }
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
-    statusBar()->showMessage("Element aligned left.");
+    statusBar()->showMessage(indexes.size() == 1 ? "Element aligned left." : "Elements aligned left.");
 }
 
 void MainWindow::alignSelectedCenter()
 {
-    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
-    LabelElement& element = labelTemplate_.elements[selectedElement_];
-    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    const std::vector<int> indexes = selectedEditableIndexes();
+    if (indexes.empty()) { statusBar()->showMessage("Select unlocked elements before aligning."); return; }
     saveUndoState();
-    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
-    element.xInches = std::max(0.0, (labelTemplate_.settings.labelWidthInches - size.width()) / 2.0);
-    if (element.type == LabelElementType::Text)
+    if (indexes.size() == 1)
     {
-        element.alignment = TextAlignment::Center;
+        LabelElement& element = labelTemplate_.elements[indexes.front()];
+        if (element.type == LabelElementType::Code128Barcode || element.type == LabelElementType::Code39Barcode)
+        {
+            element.xInches = 0.0;
+            element.boxWidthInches = labelTemplate_.settings.labelWidthInches;
+            element.alignment = TextAlignment::Center;
+        }
+        else
+        {
+            QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+            element.xInches = std::max(0.0, (labelTemplate_.settings.labelWidthInches - size.width()) / 2.0);
+            if (element.type == LabelElementType::Text)
+            {
+                element.alignment = TextAlignment::Center;
+            }
+        }
     }
-    selectElement(selectedElement_);
+    else
+    {
+        double left = labelTemplate_.elements[indexes.front()].xInches;
+        double right = left + estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[indexes.front()]).width();
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            left = std::min(left, labelTemplate_.elements[index].xInches);
+            right = std::max(right, labelTemplate_.elements[index].xInches + size.width());
+        }
+        const double center = (left + right) / 2.0;
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            labelTemplate_.elements[index].xInches = std::max(0.0, center - size.width() / 2.0);
+        }
+    }
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
-    statusBar()->showMessage("Element aligned center.");
+    statusBar()->showMessage(indexes.size() == 1 ? "Element aligned center." : "Elements aligned center.");
 }
 
 void MainWindow::alignSelectedRight()
 {
-    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
-    LabelElement& element = labelTemplate_.elements[selectedElement_];
-    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    const std::vector<int> indexes = selectedEditableIndexes();
+    if (indexes.empty()) { statusBar()->showMessage("Select unlocked elements before aligning."); return; }
     saveUndoState();
-    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
-    element.xInches = std::max(0.0, labelTemplate_.settings.labelWidthInches - size.width());
-    if (element.type == LabelElementType::Text)
+    if (indexes.size() == 1)
     {
-        element.alignment = TextAlignment::Right;
+        LabelElement& element = labelTemplate_.elements[indexes.front()];
+        if (element.type == LabelElementType::Code128Barcode || element.type == LabelElementType::Code39Barcode)
+        {
+            element.xInches = 0.0;
+            element.boxWidthInches = labelTemplate_.settings.labelWidthInches;
+            element.alignment = TextAlignment::Right;
+        }
+        else
+        {
+            QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+            element.xInches = std::max(0.0, labelTemplate_.settings.labelWidthInches - size.width());
+            if (element.type == LabelElementType::Text)
+            {
+                element.alignment = TextAlignment::Right;
+            }
+        }
     }
-    selectElement(selectedElement_);
+    else
+    {
+        double target = labelTemplate_.elements[indexes.front()].xInches + estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[indexes.front()]).width();
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            target = std::max(target, labelTemplate_.elements[index].xInches + size.width());
+        }
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            labelTemplate_.elements[index].xInches = std::max(0.0, target - size.width());
+        }
+    }
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
-    statusBar()->showMessage("Element aligned right.");
+    statusBar()->showMessage(indexes.size() == 1 ? "Element aligned right." : "Elements aligned right.");
 }
 
 void MainWindow::alignSelectedTop()
 {
-    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
-    LabelElement& element = labelTemplate_.elements[selectedElement_];
-    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    const std::vector<int> indexes = selectedEditableIndexes();
+    if (indexes.empty()) { statusBar()->showMessage("Select unlocked elements before aligning."); return; }
     saveUndoState();
-    element.yInches = 0.0;
-    selectElement(selectedElement_);
+    double target = 0.0;
+    if (indexes.size() > 1)
+    {
+        target = labelTemplate_.elements[indexes.front()].yInches;
+        for (int index : indexes)
+        {
+            target = std::min(target, labelTemplate_.elements[index].yInches);
+        }
+    }
+    for (int index : indexes)
+    {
+        labelTemplate_.elements[index].yInches = target;
+    }
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
-    statusBar()->showMessage("Element aligned top.");
+    statusBar()->showMessage(indexes.size() == 1 ? "Element aligned top." : "Elements aligned top.");
 }
 
 void MainWindow::alignSelectedMiddle()
 {
-    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
-    LabelElement& element = labelTemplate_.elements[selectedElement_];
-    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    const std::vector<int> indexes = selectedEditableIndexes();
+    if (indexes.empty()) { statusBar()->showMessage("Select unlocked elements before aligning."); return; }
     saveUndoState();
-    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
-    element.yInches = std::max(0.0, (labelTemplate_.settings.labelHeightInches - size.height()) / 2.0);
-    selectElement(selectedElement_);
+    if (indexes.size() == 1)
+    {
+        LabelElement& element = labelTemplate_.elements[indexes.front()];
+        QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+        element.yInches = std::max(0.0, (labelTemplate_.settings.labelHeightInches - size.height()) / 2.0);
+    }
+    else
+    {
+        double top = labelTemplate_.elements[indexes.front()].yInches;
+        double bottom = top + estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[indexes.front()]).height();
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            top = std::min(top, labelTemplate_.elements[index].yInches);
+            bottom = std::max(bottom, labelTemplate_.elements[index].yInches + size.height());
+        }
+        const double middle = (top + bottom) / 2.0;
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            labelTemplate_.elements[index].yInches = std::max(0.0, middle - size.height() / 2.0);
+        }
+    }
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
-    statusBar()->showMessage("Element aligned middle.");
+    statusBar()->showMessage(indexes.size() == 1 ? "Element aligned middle." : "Elements aligned middle.");
 }
 
 void MainWindow::alignSelectedBottom()
 {
-    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size())) return;
-    LabelElement& element = labelTemplate_.elements[selectedElement_];
-    if (element.locked) { statusBar()->showMessage("Unlock the selected element before aligning it."); return; }
+    const std::vector<int> indexes = selectedEditableIndexes();
+    if (indexes.empty()) { statusBar()->showMessage("Select unlocked elements before aligning."); return; }
     saveUndoState();
-    QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
-    element.yInches = std::max(0.0, labelTemplate_.settings.labelHeightInches - size.height());
-    selectElement(selectedElement_);
+    if (indexes.size() == 1)
+    {
+        LabelElement& element = labelTemplate_.elements[indexes.front()];
+        QSizeF size = estimatedElementSizeInches(labelTemplate_, element);
+        element.yInches = std::max(0.0, labelTemplate_.settings.labelHeightInches - size.height());
+    }
+    else
+    {
+        double target = labelTemplate_.elements[indexes.front()].yInches + estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[indexes.front()]).height();
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            target = std::max(target, labelTemplate_.elements[index].yInches + size.height());
+        }
+        for (int index : indexes)
+        {
+            const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
+            labelTemplate_.elements[index].yInches = std::max(0.0, target - size.height());
+        }
+    }
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
-    statusBar()->showMessage("Element aligned bottom.");
+    statusBar()->showMessage(indexes.size() == 1 ? "Element aligned bottom." : "Elements aligned bottom.");
 }
 
 void MainWindow::distributeElementsHorizontally()
 {
-    if (labelTemplate_.elements.size() < 3)
+    std::vector<int> indexes = selectedEditableIndexes();
+    if (indexes.size() < 3)
     {
-        statusBar()->showMessage("Equal spacing needs at least three elements.");
-        return;
+        indexes.clear();
+        for (int i = 0; i < static_cast<int>(labelTemplate_.elements.size()); ++i)
+        {
+            if (!labelTemplate_.elements[i].locked)
+            {
+                indexes.push_back(i);
+            }
+        }
+        if (indexes.size() < 3)
+        {
+            statusBar()->showMessage("Equal spacing needs at least three unlocked elements.");
+            return;
+        }
     }
 
     saveUndoState();
-    std::vector<int> indexes(labelTemplate_.elements.size());
-    for (int i = 0; i < static_cast<int>(indexes.size()); ++i)
-    {
-        indexes[i] = i;
-    }
     std::sort(indexes.begin(), indexes.end(), [this](int a, int b) {
         return labelTemplate_.elements[a].xInches < labelTemplate_.elements[b].xInches;
     });
@@ -1579,27 +1807,35 @@ void MainWindow::distributeElementsHorizontally()
     for (int order = 1; order < static_cast<int>(indexes.size()) - 1; ++order)
     {
         LabelElement& element = labelTemplate_.elements[indexes[order]];
-        if (!element.locked)
-        {
-            element.xInches = first + step * order;
-        }
+        element.xInches = first + step * order;
     }
-    selectElement(selectedElement_);
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
     statusBar()->showMessage("Elements spaced evenly.");
 }
 
 void MainWindow::lockSelectedElement(bool locked)
 {
-    if (selectedElement_ < 0 || selectedElement_ >= static_cast<int>(labelTemplate_.elements.size()))
+    std::vector<int> indexes = selectedElements_;
+    if (indexes.empty() && selectedElement_ >= 0)
+    {
+        indexes.push_back(selectedElement_);
+    }
+    indexes.erase(std::remove_if(indexes.begin(), indexes.end(), [this](int index) {
+        return index < 0 || index >= static_cast<int>(labelTemplate_.elements.size());
+    }), indexes.end());
+    if (indexes.empty())
     {
         return;
     }
     saveUndoState();
-    labelTemplate_.elements[selectedElement_].locked = locked;
-    selectElement(selectedElement_);
+    for (int index : indexes)
+    {
+        labelTemplate_.elements[index].locked = locked;
+    }
+    selectElements(QList<int>(indexes.begin(), indexes.end()));
     refreshPreview();
-    statusBar()->showMessage(locked ? "Element locked." : "Element unlocked.");
+    statusBar()->showMessage(locked ? "Element(s) locked." : "Element(s) unlocked.");
 }
 
 void MainWindow::saveTemplate()
@@ -1746,6 +1982,10 @@ void MainWindow::previewZpl()
         const QVector<int> rows = excelRecords_->printableSourceRows();
         context = contextForRow(rows.isEmpty() ? 0 : rows.first());
     }
+    else
+    {
+        SampleData::fillMissingForTemplate(labelTemplate_, context);
+    }
 
     auto* dialog = new QDialog(this);
     dialog->setWindowTitle("Generated ZPL");
@@ -1884,9 +2124,70 @@ void MainWindow::updateTemplateFromSettings()
 void MainWindow::selectElement(int index)
 {
     selectedElement_ = index;
+    selectedElements_.clear();
+    if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()))
+    {
+        selectedElements_.push_back(index);
+    }
+    QSignalBlocker blocker(elementList_);
+    elementList_->clearSelection();
     elementList_->setCurrentRow(index);
+    if (auto* item = elementList_->item(index))
+    {
+        item->setSelected(true);
+    }
     preview_->setSelectedElement(index);
     editor_->setElement(index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()) ? &labelTemplate_.elements[index] : nullptr);
+}
+
+void MainWindow::selectElements(const QList<int>& indexes)
+{
+    selectedElements_.clear();
+    for (int index : indexes)
+    {
+        if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()) &&
+            std::find(selectedElements_.begin(), selectedElements_.end(), index) == selectedElements_.end())
+        {
+            selectedElements_.push_back(index);
+        }
+    }
+
+    selectedElement_ = selectedElements_.empty() ? -1 : selectedElements_.front();
+
+    QSignalBlocker blocker(elementList_);
+    elementList_->clearSelection();
+    elementList_->setCurrentRow(selectedElement_);
+    for (int index : selectedElements_)
+    {
+        if (auto* item = elementList_->item(index))
+        {
+            item->setSelected(true);
+        }
+    }
+
+    preview_->setSelectedElements(QList<int>(selectedElements_.begin(), selectedElements_.end()));
+    editor_->setElement(selectedElements_.size() == 1 ? &labelTemplate_.elements[selectedElement_] : nullptr);
+    if (selectedElements_.size() > 1)
+    {
+        statusBar()->showMessage(QString("%1 elements selected.").arg(selectedElements_.size()));
+    }
+}
+
+std::vector<int> MainWindow::selectedEditableIndexes() const
+{
+    std::vector<int> indexes = selectedElements_;
+    if (indexes.empty() && selectedElement_ >= 0)
+    {
+        indexes.push_back(selectedElement_);
+    }
+    std::sort(indexes.begin(), indexes.end());
+    indexes.erase(std::unique(indexes.begin(), indexes.end()), indexes.end());
+    indexes.erase(std::remove_if(indexes.begin(), indexes.end(), [this](int index) {
+        return index < 0 ||
+               index >= static_cast<int>(labelTemplate_.elements.size()) ||
+               labelTemplate_.elements[index].locked;
+    }), indexes.end());
+    return indexes;
 }
 
 VariableContext MainWindow::contextForRow(int rowIndex) const
@@ -1943,6 +2244,10 @@ VariableContext MainWindow::promptContext() const
             {
                 continue;
             }
+            if (SampleData::isBuiltInPlaceholder(placeholder.first))
+            {
+                continue;
+            }
             bool ok = false;
             QString value = QInputDialog::getText(nullptr, "Print Value", QString::fromStdString(placeholder.first), QLineEdit::Normal, "", &ok);
             if (ok)
@@ -1951,6 +2256,7 @@ VariableContext MainWindow::promptContext() const
             }
         }
     }
+    SampleData::fillMissingForTemplate(labelTemplate_, context);
     return context;
 }
 

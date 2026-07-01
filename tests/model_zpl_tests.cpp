@@ -3,8 +3,10 @@
 #include <fstream>
 #include <string>
 
+#include "core/BarcodeMetrics.h"
 #include "core/CsvImporter.h"
 #include "core/LabelTemplate.h"
+#include "core/SampleData.h"
 #include "core/TemplateStorage.h"
 #include "core/VariableResolver.h"
 #include "core/ZplGenerator.h"
@@ -111,11 +113,72 @@ namespace
         assert(VariableResolver::resolveText("{ItemNumber}-{Serial}-{RecordIndex}", context) == "A100-17-3");
         assert(VariableResolver::resolveText("{Number}-{Description}", context) == "A100-Bracket");
         assert(!VariableResolver::resolveText("{Date}", context).empty());
+        assert(VariableResolver::resolveText("{DateTime}", context).find("Sample") == std::string::npos);
         assert(VariableResolver::findPlaceholders("A {ItemNumber} {Lot}").size() == 2);
 
         context.values["Order id"] = "1001";
         assert(VariableResolver::resolveText("{Order id}-{ItemNumber}", context) == "1001-A100");
         assert(VariableResolver::findPlaceholders("A {Order id} {ItemNumber}").size() == 2);
+    }
+
+    void BarcodeMetricsMatchZebraCode128Width()
+    {
+        LabelElement element;
+        element.type = LabelElementType::Code128Barcode;
+        element.barcodeModuleWidth = 2;
+
+        assert(BarcodeMetrics::moduleCount(element, "TEST-001") == 123);
+        assert(BarcodeMetrics::barcodeWidthDots(element, "TEST-001") == 246);
+
+        VariableContext context;
+        element.text = "{Number}";
+        SampleData::fillMissingForElement(element, context);
+        assert(VariableResolver::elementValue(element, context) == "TEST-001");
+    }
+
+    void SampleDataLeavesDateTimeBuiltInsLive()
+    {
+        LabelElement element;
+        element.type = LabelElementType::Text;
+        element.text = "{DateTime}";
+        element.source = FieldSource::Fixed;
+
+        VariableContext context;
+        SampleData::fillMissingForElement(element, context);
+        assert(context.values.find("DateTime") == context.values.end());
+
+        const std::string value = VariableResolver::elementValue(element, context);
+        assert(value.find("Sample") == std::string::npos);
+        assert(value.find("-") != std::string::npos);
+        assert(value.find(":") != std::string::npos);
+    }
+
+    void CenteredCode128BarcodeUsesActualPrintedValueWidth()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+        label.settings.labelWidthInches = 2.25;
+        label.settings.labelHeightInches = 0.75;
+
+        LabelElement barcode;
+        barcode.type = LabelElementType::Code128Barcode;
+        barcode.source = FieldSource::Variable;
+        barcode.text = "{Number}";
+        barcode.variableName = "Number";
+        barcode.xInches = 0.0;
+        barcode.yInches = 0.1;
+        barcode.boxWidthInches = 2.25;
+        barcode.alignment = TextAlignment::Center;
+        barcode.barcodeModuleWidth = 2;
+        barcode.barcodeHeightDots = 48;
+        label.elements.push_back(barcode);
+
+        VariableContext context;
+        context.values["Number"] = "11111122222";
+        const std::string zpl = ZplGenerator::generate(label, context);
+
+        assert(zpl.find("^FO72,20") != std::string::npos);
+        assert(zpl.find("^FD>:11111122222") != std::string::npos);
     }
 
     void SerialRangeGeneratesAscendingAndDescendingJobs()
@@ -202,6 +265,9 @@ int main()
 {
     GeneratedZplIncludesSettingsAndVersionFiveElements();
     VariableResolverHandlesBuiltInsAndSerialFormatting();
+    BarcodeMetricsMatchZebraCode128Width();
+    SampleDataLeavesDateTimeBuiltInsLive();
+    CenteredCode128BarcodeUsesActualPrintedValueWidth();
     SerialRangeGeneratesAscendingAndDescendingJobs();
     CsvImporterDetectsHeadersAndMapsRows();
     TemplateStorageRoundTripsVersionFiveTemplate();

@@ -4,6 +4,44 @@
 #include <iomanip>
 #include <sstream>
 
+#include "core/BarcodeMetrics.h"
+
+namespace
+{
+int alignedBarcodeX(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
+{
+    int x = labelTemplate.settings.inchesToDots(element.xInches);
+    const int boxWidth = labelTemplate.settings.inchesToDots(element.boxWidthInches);
+    const int barcodeWidth = BarcodeMetrics::barcodeWidthDots(element, value);
+    if (element.alignment == TextAlignment::Center && boxWidth > barcodeWidth)
+    {
+        x += (boxWidth - barcodeWidth) / 2;
+    }
+    else if (element.alignment == TextAlignment::Right && boxWidth > barcodeWidth)
+    {
+        x += boxWidth - barcodeWidth;
+    }
+    return x;
+}
+
+std::string code128FieldData(const std::string& escapedValue)
+{
+    std::string data = ">:";
+    for (char ch : escapedValue)
+    {
+        if (ch == '>')
+        {
+            data += ">>";
+        }
+        else
+        {
+            data += ch;
+        }
+    }
+    return data;
+}
+}
+
 std::string ZplGenerator::generate(const LabelTemplate& labelTemplate, const VariableContext& context)
 {
     const PrinterSettings& settings = labelTemplate.settings;
@@ -126,7 +164,7 @@ std::string ZplGenerator::textZpl(const LabelElement& element, const LabelTempla
 std::string ZplGenerator::barcodeZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
 {
     std::ostringstream zpl;
-    int x = dots(labelTemplate, element.xInches);
+    int x = alignedBarcodeX(element, labelTemplate, value);
     int y = dots(labelTemplate, element.yInches);
     zpl << "^FO" << x << "," << y << "\n";
     zpl << "^BY" << element.barcodeModuleWidth << "\n";
@@ -140,7 +178,8 @@ std::string ZplGenerator::barcodeZpl(const LabelElement& element, const LabelTem
         zpl << "^BC" << orientationCode(element.rotation) << "," << element.barcodeHeightDots << ","
             << (element.humanReadable ? "Y" : "N") << ",N,N\n";
     }
-    zpl << "^FH\\^FD" << escapeFieldData(value) << "^FS\n";
+    const std::string escapedValue = escapeFieldData(value);
+    zpl << "^FH\\^FD" << (element.type == LabelElementType::Code128Barcode ? code128FieldData(escapedValue) : escapedValue) << "^FS\n";
     return zpl.str();
 }
 

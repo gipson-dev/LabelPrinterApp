@@ -12,7 +12,7 @@ The current application covers the requested Version 1 through Version 5 feature
 | --- | --- | --- |
 | Core label engine | Complete | Label model, ZPL generation, template storage, variable handling, and shape output are implemented. |
 | Zebra printing | Complete | Windows RAW spooler printing is implemented. |
-| Designer UI | Beta-ready | Classic designer layout, toolbox, canvas, rulers, grid, snap, inspector pages, inline text editing, and layout controls are functional. |
+| Designer UI | Beta-ready | Classic designer layout, toolbox, canvas, rulers, grid, snap, marquee multi-select, group drag, inspector pages, inline text editing, and layout controls are functional. |
 | Data import and batch printing | Beta-ready | Excel/CSV rows, checked rows, row ranges, copies, serial ranges, and placeholder mapping are implemented. |
 | Packaging | Beta-ready | Release folder builds under `dist\LabelPrinterApp`; Qt runtime deployment is handled when available. |
 | Developer setup | Beta-ready | CMake/Qt build path is documented and VS Code C/C++ IntelliSense resolves fetched `nlohmann/json.hpp` after configure/build. |
@@ -30,15 +30,15 @@ The current application covers the requested Version 1 through Version 5 feature
 | 5 | Template storage | Complete | JSON load/save via `nlohmann/json`, fallback template loading, blank stock templates, and saved metadata for text, barcode, QR, line, box, print, and lock flags. |
 | 6 | Main UI wiring | Complete | Qt `MainWindow`, menus, dense toolbar, left toolbox, center preview, right property editor, bottom alignment toolbar, settings, help, template commands, and Data tab are wired. |
 | 7 | Editable label fields | Complete | Users can add, edit, delete, duplicate, move, resize, lock, unlock, mark do-not-print, and edit text directly on the canvas. |
-| 8 | Barcode and QR support | Complete | Code 128, Code 39, QR code, barcode height, module width, human-readable toggle, preview rendering, and ZPL output are implemented. |
+| 8 | Barcode and QR support | Complete | Code 128, Code 39, QR code, barcode height, module width, human-readable toggle, Zebra-width preview sizing, value-aware barcode centering, and ZPL output are implemented. |
 | 9 | Preview and canvas system | Complete | Scaled preview with label boundary, printable margin, rulers, grid, snap, selection handles, cursor position, vertically centered text, text/barcode/QR/shape rendering, drag-to-move, resize handles, and locked-element drag blocking. |
 | 10 | Template manager | Complete | Template tab loads bundled JSON templates and supports saving/loading user templates. |
 | 11 | Printer and stock settings | Complete | Installed-printer selector, refresh, DPI, dimensions, margins, gap, sensing mode, orientation, speed, darkness, copies, and stock presets. |
 | 12 | Error handling and status feedback | Complete for foundation | Save errors, print errors, missing-printer validation, template fallback handling, status-bar messages, and basic success/failure reporting. |
 | 13 | Print history | Complete for foundation | Persistent CSV print history logs successful and failed jobs to `logs\print_history.csv`. |
 | 14 | Batch printing | Complete | Copies, serial ranges, checked Excel/CSV rows, all rows, row ranges, quantity-per-row printing, placeholder mapping, and standard `Number`/`Description` fields. |
-| 15 | Advanced formatting | Complete for foundation | Font size dropdown, font width, regular default text weight, optional bold/italic/underline, rotation, alignment, wrapping, multi-line, fixed/variable text, prefix/suffix, and auto-fit metadata. |
-| 16 | Drag-and-drop designer | Complete | Drag-to-move, resize handles, layer order, align tools, equal spacing, snap/grid toggles, cut/copy/paste, undo/redo, zoom in/out/fit, lock/unlock, and inline text editing. |
+| 15 | Advanced formatting | Complete for foundation | Font size dropdown, font width, regular default text weight, optional bold/italic/underline, rotation, alignment, wrapping, multi-line, fixed/variable text, live date/time fields, prefix/suffix, and auto-fit metadata. |
+| 16 | Drag-and-drop designer | Complete | Drag-to-move, drag-marquee multi-select, Ctrl-click selection toggles, group dragging, resize handles, layer order, align tools, equal spacing, snap/grid toggles, cut/copy/paste, undo/redo, zoom in/out/fit, lock/unlock, and inline text editing. |
 | 17 | Release packaging | Beta-ready | `scripts/package-release.ps1` builds `dist\LabelPrinterApp`, deploys Qt runtime files through `windeployqt` when available, and includes docs/templates/examples. |
 | 18 | GitHub and release workflow | Complete for foundation | GitHub repository, main branch publishing, Actions build/test workflow, and Windows package artifact workflow foundation. |
 | 19 | Testing and calibration | In progress | Core tests cover ZPL, text origin behavior, CSV, variables, serial ranges, and template storage. Manual printer calibration remains next. |
@@ -54,6 +54,7 @@ The current application covers the requested Version 1 through Version 5 feature
 - Side and corner resize handles for selected text, barcode, QR, line, and box elements.
 - Text, barcode, QR, line, and box support with template storage and ZPL output.
 - Inline canvas text editing by double-clicking an unlocked text element.
+- Multi-element selection with drag-marquee selection, Ctrl-click selection toggles, group dragging, and group-aware align/distribute/lock commands.
 - New Text, Number, and Serial # elements default to regular font weight; Bold is opt-in from the Formatting page.
 - Cut, copy, paste, undo, redo, zoom in, zoom out, zoom fit, and help.
 - Vertically centered preview text plus corrected Zebra text-origin output.
@@ -147,7 +148,7 @@ Possible features:
 ## Manual QA Checklist Summary
 
 - Startup: launch from `dist\LabelPrinterApp`, move the folder, reboot, verify no developer tools are required, and confirm missing files produce understandable errors.
-- Designer: add text, barcode, QR, line, and box; edit text inline; move, resize, lock, unlock, delete, duplicate, cut, copy, paste, undo, redo, zoom, grid, and snap.
+- Designer: add text, barcode, QR, line, and box; edit text inline; marquee-select multiple elements; group-drag and align selected elements; verify barcode center alignment against printed output; move, resize, lock, unlock, delete, duplicate, cut, copy, paste, undo, redo, zoom, grid, and snap.
 - Properties: verify Text, Formatting, Position, Data, Barcode, and Print pages update the selected element and that do-not-print prevents output.
 - Templates: load blank 2.25 x 0.75 and 4 x 2 templates, save custom templates, reopen saved templates, and verify element metadata survives reload.
 - Data import: load CSV and Excel, edit/save rows, search, print checked rows, print all rows, print ranges, print quantity per row, and verify `Number`/`Description` placeholders.

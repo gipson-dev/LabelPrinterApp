@@ -19,11 +19,13 @@ For Uline S-8599 at 203 DPI, the calculated size should show `457 x 152` dots.
 2. Select the blank canvas from `Canvas Template`.
 3. Click `Number`.
 4. Click `Description`.
-5. Add `Line` or `Box` elements when you need dividers or outlines.
-6. Move the fields by dragging them on the canvas.
-7. Resize the selected field by dragging the blue side or corner anchors.
-8. Double-click text on the canvas when you want to edit it in place.
-9. Use the right-side `Element Property Editor` to adjust formatting, data source, position, barcode settings, and print options.
+5. Click `Date/Time` when the label should include the current date and time.
+6. Add `Line` or `Box` elements when you need dividers or outlines.
+7. Move the fields by dragging them on the canvas.
+8. Resize the selected field by dragging the blue side or corner anchors.
+9. Drag across empty canvas space to select multiple elements, then align, distribute, lock, or drag the group.
+10. Double-click text on the canvas when you want to edit it in place.
+11. Use the right-side `Element Property Editor` to adjust formatting, data source, position, barcode settings, and print options.
 
 The toolbar and menus include common editor commands:
 
@@ -31,10 +33,14 @@ The toolbar and menus include common editor commands:
 - `Undo` and `Redo` for common design changes.
 - `Zoom In`, `Zoom Out`, and `Fit` for the design canvas.
 - `Help` opens this user guide when it is available in the packaged docs folder.
+- `Help > Check for Updates` opens the LabelPrinterApp releases page.
 
 The standard data fields are `Number` and `Description`.
+The Date/Time tool inserts `{DateTime}`, which resolves automatically when previewing or printing.
 Text is vertically centered in its selected box on the canvas, and normal text printing uses the same corrected origin so the printed label stays close to the designer preview.
+Barcode selection boxes use Zebra-width sizing for Code 128. Use Align center or Align right on a selected barcode to create an alignment lane; imported values with different lengths are then centered or right-aligned when the ZPL is generated.
 For in-place text edits, press Enter or click away to save, or press Escape to cancel.
+For multi-selection, drag a marquee around elements or Ctrl-click individual elements. Group align commands use the selected group's left, center, right, top, middle, or bottom edge.
 
 ## Resize Elements
 

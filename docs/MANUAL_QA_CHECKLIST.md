@@ -45,9 +45,13 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Select the text element and drag side/corner anchors to resize it.
 - [ ] Confirm the text stays vertically centered inside the selected text box in the preview.
 - [ ] Increase the text font size above 72 dots and confirm the text box width grows when needed.
+- [ ] Add a Date/Time field and confirm the preview shows the current date and time instead of placeholder text.
+- [ ] Print the Date/Time field and confirm it updates to the current date and time without prompting.
 - [ ] Add a Code 128 barcode.
 - [ ] Set the barcode value to `QA-001`.
 - [ ] Select the barcode and drag side/corner anchors to change its width/height.
+- [ ] Use Align center on the barcode, print it, and confirm the printed barcode center matches the preview center.
+- [ ] Change the barcode data from `QA-001` to a longer numeric value such as `11111122222`, print again, and confirm it remains centered.
 - [ ] Add a QR code.
 - [ ] Set the QR value to `QA QR TEST`.
 - [ ] Select the QR code and drag side/corner anchors to resize it.
@@ -56,7 +60,13 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Use Copy, Paste, Cut, Undo, and Redo from the toolbar/menu.
 - [ ] Use Zoom In, Zoom Out, and Fit.
 - [ ] Click Help and confirm the user guide opens or a fallback message appears.
+- [ ] Click `Help > Check for Updates` and confirm the releases page opens or a fallback message appears.
 - [ ] Move elements by dragging in the preview.
+- [ ] Drag a marquee around multiple elements and confirm each selected element shows a selection frame.
+- [ ] Ctrl-click an element and confirm it toggles in or out of the multi-selection.
+- [ ] Drag the selected group and confirm all unlocked selected elements move together.
+- [ ] Use Align left, Align center, Align right, Align top, Align middle, and Align bottom on a multi-selection.
+- [ ] Use Equal spacing on three or more selected elements.
 - [ ] Toggle `Grid` off and confirm the grid hides.
 - [ ] Toggle `Grid` on and confirm the grid shows.
 - [ ] Toggle `Snap` on and confirm dragged elements snap to the 0.25 inch grid.

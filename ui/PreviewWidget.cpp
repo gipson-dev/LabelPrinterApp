@@ -11,6 +11,8 @@
 #include <cmath>
 #include <vector>
 
+#include "core/BarcodeMetrics.h"
+#include "core/SampleData.h"
 #include "core/VariableResolver.h"
 
 namespace
@@ -126,6 +128,21 @@ PreviewWidget::PreviewWidget(QWidget* parent)
 void PreviewWidget::setTemplate(const LabelTemplate& labelTemplate)
 {
     template_ = labelTemplate;
+    for (auto it = selectedElements_.begin(); it != selectedElements_.end();)
+    {
+        if (*it < 0 || *it >= static_cast<int>(template_.elements.size()))
+        {
+            it = selectedElements_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    if (selectedElement_ >= static_cast<int>(template_.elements.size()))
+    {
+        selectedElement_ = selectedElements_.isEmpty() ? -1 : selectedElements_.front();
+    }
     updateInlineEditorGeometry();
     update();
 }
@@ -139,6 +156,29 @@ void PreviewWidget::setVariables(const VariableContext& context)
 void PreviewWidget::setSelectedElement(int index)
 {
     selectedElement_ = index;
+    selectedElements_.clear();
+    if (index >= 0)
+    {
+        selectedElements_.append(index);
+    }
+    if (inlineEditor_ && editingElement_ != selectedElement_)
+    {
+        commitInlineTextEdit();
+    }
+    update();
+}
+
+void PreviewWidget::setSelectedElements(const QList<int>& indexes)
+{
+    selectedElements_.clear();
+    for (int index : indexes)
+    {
+        if (index >= 0 && index < static_cast<int>(template_.elements.size()) && !selectedElements_.contains(index))
+        {
+            selectedElements_.append(index);
+        }
+    }
+    selectedElement_ = selectedElements_.isEmpty() ? -1 : selectedElements_.front();
     if (inlineEditor_ && editingElement_ != selectedElement_)
     {
         commitInlineTextEdit();
@@ -257,7 +297,7 @@ void PreviewWidget::paintEvent(QPaintEvent*)
     for (int i = 0; i < static_cast<int>(template_.elements.size()); ++i)
     {
         const LabelElement& element = template_.elements[i];
-        bool selected = i == selectedElement_;
+        bool selected = isSelected(i);
         if (element.type == LabelElementType::Text)
         {
             drawTextElement(painter, element, label, selected);
@@ -275,10 +315,22 @@ void PreviewWidget::paintEvent(QPaintEvent*)
             drawBarcodeElement(painter, element, label, selected);
         }
     }
+
+    if (marqueeSelecting_)
+    {
+        painter.setBrush(QColor(0, 84, 190, 35));
+        painter.setPen(QPen(QColor(0, 84, 190), 1, Qt::DashLine));
+        painter.drawRect(marqueeRect_.normalized());
+    }
 }
 
 void PreviewWidget::mousePressEvent(QMouseEvent* event)
 {
+    if (inlineEditor_)
+    {
+        commitInlineTextEdit();
+    }
+
     if (selectedElement_ >= 0 && selectedElement_ < static_cast<int>(template_.elements.size()))
     {
         const int handle = resizeHandleAt(event->position(), selectedElement_);
@@ -299,11 +351,32 @@ void PreviewWidget::mousePressEvent(QMouseEvent* event)
         }
     }
 
-    int hit = hitTest(event->position());
-    selectedElement_ = hit;
-    emit elementSelected(hit);
+    const int hit = hitTest(event->position());
     if (hit >= 0)
     {
+        if (event->modifiers() & Qt::ControlModifier)
+        {
+            if (selectedElements_.contains(hit))
+            {
+                selectedElements_.removeAll(hit);
+            }
+            else
+            {
+                selectedElements_.append(hit);
+            }
+            selectedElement_ = selectedElements_.isEmpty() ? -1 : hit;
+            emit elementsSelected(selectedElements_);
+            update();
+            return;
+        }
+
+        if (!isSelected(hit))
+        {
+            selectedElements_.clear();
+            selectedElements_.append(hit);
+        }
+        selectedElement_ = hit;
+        emit elementsSelected(selectedElements_);
         if (template_.elements[hit].locked)
         {
             update();
@@ -313,7 +386,27 @@ void PreviewWidget::mousePressEvent(QMouseEvent* event)
         QPointF labelPoint = widgetToLabel(event->position(), label);
         const LabelElement& element = template_.elements[hit];
         dragOffsetInches_ = QPointF(labelPoint.x() - element.xInches, labelPoint.y() - element.yInches);
+        groupDragStartInches_ = labelPoint;
+        groupDragIndexes_.clear();
+        groupDragStartElements_.clear();
+        for (int index : selectedElements_)
+        {
+            if (index >= 0 && index < static_cast<int>(template_.elements.size()) && !template_.elements[index].locked)
+            {
+                groupDragIndexes_.append(index);
+                groupDragStartElements_.append(template_.elements[index]);
+            }
+        }
         draggingElement_ = hit;
+    }
+    else
+    {
+        selectedElement_ = -1;
+        selectedElements_.clear();
+        emit elementsSelected(selectedElements_);
+        marqueeSelecting_ = labelRect().contains(event->position());
+        marqueeStart_ = event->position();
+        marqueeRect_ = QRectF(marqueeStart_, marqueeStart_);
     }
     update();
 }
@@ -350,6 +443,22 @@ void PreviewWidget::mouseMoveEvent(QMouseEvent* event)
 
     if (draggingElement_ < 0 || draggingElement_ >= static_cast<int>(template_.elements.size()))
     {
+        if (marqueeSelecting_)
+        {
+            marqueeRect_ = QRectF(marqueeStart_, event->position()).normalized();
+            selectedElements_.clear();
+            const QRectF label = labelRect();
+            for (int i = 0; i < static_cast<int>(template_.elements.size()); ++i)
+            {
+                if (marqueeRect_.intersects(elementRect(template_.elements[i], label)))
+                {
+                    selectedElements_.append(i);
+                }
+            }
+            selectedElement_ = selectedElements_.isEmpty() ? -1 : selectedElements_.front();
+            update();
+            return;
+        }
         if (selectedElement_ >= 0 && resizeHandleAt(event->position(), selectedElement_) >= 0)
         {
             setCursor(Qt::SizeAllCursor);
@@ -361,27 +470,55 @@ void PreviewWidget::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    QPointF labelPoint = widgetToLabel(event->position(), label) - dragOffsetInches_;
-    LabelElement& element = template_.elements[draggingElement_];
-    double xInches = std::max(0.0, labelPoint.x());
-    double yInches = std::max(0.0, labelPoint.y());
+    const QPointF currentLabelPoint = widgetToLabel(event->position(), label);
+    QPointF delta = currentLabelPoint - groupDragStartInches_;
     if (snapToGrid_)
     {
         constexpr double gridStep = 0.25;
-        xInches = std::round(xInches / gridStep) * gridStep;
-        yInches = std::round(yInches / gridStep) * gridStep;
+        delta.setX(std::round(delta.x() / gridStep) * gridStep);
+        delta.setY(std::round(delta.y() / gridStep) * gridStep);
     }
-    element.xInches = xInches;
-    element.yInches = yInches;
-    emit elementMoved(draggingElement_, element.xInches, element.yInches);
+    for (int i = 0; i < groupDragIndexes_.size(); ++i)
+    {
+        const int index = groupDragIndexes_[i];
+        if (index < 0 || index >= static_cast<int>(template_.elements.size()))
+        {
+            continue;
+        }
+        LabelElement element = groupDragStartElements_[i];
+        element.xInches = std::max(0.0, element.xInches + delta.x());
+        element.yInches = std::max(0.0, element.yInches + delta.y());
+        template_.elements[index] = element;
+    }
     update();
 }
 
 void PreviewWidget::mouseReleaseEvent(QMouseEvent*)
 {
+    if (marqueeSelecting_)
+    {
+        marqueeSelecting_ = false;
+        marqueeRect_ = QRectF();
+        emit elementsSelected(selectedElements_);
+        update();
+    }
+    if (draggingElement_ >= 0 && !groupDragIndexes_.isEmpty())
+    {
+        QList<LabelElement> changed;
+        for (int index : groupDragIndexes_)
+        {
+            if (index >= 0 && index < static_cast<int>(template_.elements.size()))
+            {
+                changed.append(template_.elements[index]);
+            }
+        }
+        emit elementsChanged(groupDragIndexes_, changed);
+    }
     draggingElement_ = -1;
     resizingElement_ = -1;
     resizeHandle_ = -1;
+    groupDragIndexes_.clear();
+    groupDragStartElements_.clear();
 }
 
 void PreviewWidget::resizeEvent(QResizeEvent* event)
@@ -434,8 +571,19 @@ QRectF PreviewWidget::elementRect(const LabelElement& element, const QRectF& lab
         return QRectF(topLeft, QSizeF(width, height));
     }
 
-    double module = element.barcodeModuleWidth / static_cast<double>(template_.settings.dpi) * scaleX;
-    double width = std::max(48.0, static_cast<double>(std::max<std::size_t>(8, VariableResolver::elementValue(element, variables_).size())) * module * 9.0);
+    VariableContext context = variables_;
+    SampleData::fillMissingForElement(element, context);
+    const std::string value = VariableResolver::elementValue(element, context);
+    double width = std::max(48.0, BarcodeMetrics::barcodeWidthDots(element, value) / static_cast<double>(template_.settings.dpi) * scaleX);
+    const double boxWidth = std::max(width, element.boxWidthInches * scaleX);
+    if (element.alignment == TextAlignment::Center && boxWidth > width)
+    {
+        topLeft.setX(topLeft.x() + (boxWidth - width) / 2.0);
+    }
+    else if (element.alignment == TextAlignment::Right && boxWidth > width)
+    {
+        topLeft.setX(topLeft.x() + boxWidth - width);
+    }
     double height = element.barcodeHeightDots / static_cast<double>(template_.settings.dpi) * scaleY;
     double humanText = element.humanReadable ? std::max(14.0, height * 0.22) : 0.0;
     return QRectF(topLeft, QSizeF(width, std::max(22.0, height) + humanText));
@@ -457,6 +605,11 @@ QPointF PreviewWidget::widgetToLabel(const QPointF& point, const QRectF& label) 
     return QPointF(
         (point.x() - label.left()) / label.width() * safeLabelWidth(template_),
         (point.y() - label.top()) / label.height() * safeLabelHeight(template_));
+}
+
+bool PreviewWidget::isSelected(int index) const
+{
+    return selectedElements_.contains(index);
 }
 
 int PreviewWidget::hitTest(const QPointF& point) const
@@ -684,8 +837,10 @@ void PreviewWidget::applyResize(const QPointF& labelPoint)
     {
         element.boxWidthInches = std::max(minWidth, rect.width());
         element.barcodeHeightDots = std::max(10, static_cast<int>(std::round(rect.height() * dpi * 0.78)));
-        const double estimatedModules = std::max(60.0, static_cast<double>(std::max<std::size_t>(8, VariableResolver::elementValue(element, variables_).size())) * 11.0);
-        element.barcodeModuleWidth = std::clamp(static_cast<int>(std::round(rect.width() * dpi / estimatedModules)), 1, 10);
+        VariableContext context = variables_;
+        SampleData::fillMissingForElement(element, context);
+        const int modules = std::max(1, BarcodeMetrics::moduleCount(element, VariableResolver::elementValue(element, context)));
+        element.barcodeModuleWidth = std::clamp(static_cast<int>(std::round(rect.width() * dpi / modules)), 1, 10);
     }
 
     emit elementChanged(resizingElement_, element);
@@ -715,25 +870,7 @@ void PreviewWidget::drawTextElement(QPainter& painter, const LabelElement& eleme
 {
     QRectF box = elementRect(element, label);
     VariableContext context = variables_;
-    if (context.serialNumber == 0)
-    {
-        context.serialNumber = 1;
-    }
-    for (const auto& placeholder : VariableResolver::findPlaceholders(element.text))
-    {
-        if (context.values.find(placeholder.first) == context.values.end())
-        {
-            context.values[placeholder.first] = placeholder.first == "Number" ? "TEST-001" :
-                                                placeholder.first == "ItemNumber" ? "TEST-001" :
-                                                placeholder.first == "Description" ? "Test description" :
-                                                placeholder.first == "Order id" ? "1001" :
-                                                placeholder.first == "Name" ? "Database school 2" :
-                                                placeholder.first == "Lot" ? "LOT-001" :
-                                                placeholder.first == "Bin" ? "A-01" :
-                                                placeholder.first == "Quantity" ? "1" :
-                                                "Sample";
-        }
-    }
+    SampleData::fillMissingForElement(element, context);
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
     double scaleY = label.height() / safeLabelHeight(template_);
     int pixelSize = std::max(12, static_cast<int>(element.fontHeightDots / static_cast<double>(template_.settings.dpi) * scaleY));
@@ -775,16 +912,7 @@ void PreviewWidget::drawBarcodeElement(QPainter& painter, const LabelElement& el
 {
     QRectF box = elementRect(element, label);
     VariableContext context = variables_;
-    for (const auto& placeholder : VariableResolver::findPlaceholders(element.text))
-    {
-        if (context.values.find(placeholder.first) == context.values.end())
-        {
-            context.values[placeholder.first] = placeholder.first == "Number" ? "TEST-001" :
-                                                placeholder.first == "ItemNumber" ? "TEST-001" :
-                                                placeholder.first == "Order id" ? "1001" :
-                                                "226026-K-003";
-        }
-    }
+    SampleData::fillMissingForElement(element, context);
     QString value = QString::fromStdString(VariableResolver::elementValue(element, context));
     double scaleX = label.width() / safeLabelWidth(template_);
     double barHeight = element.barcodeHeightDots / static_cast<double>(template_.settings.dpi) * (label.height() / safeLabelHeight(template_));
@@ -849,17 +977,7 @@ void PreviewWidget::drawQrElement(QPainter& painter, const LabelElement& element
 {
     QRectF box = elementRect(element, label);
     VariableContext context = variables_;
-    for (const auto& placeholder : VariableResolver::findPlaceholders(element.text))
-    {
-        if (context.values.find(placeholder.first) == context.values.end())
-        {
-            context.values[placeholder.first] = placeholder.first == "Number" ? "TEST-001" :
-                                                placeholder.first == "ItemNumber" ? "TEST-001" :
-                                                placeholder.first == "Order id" ? "1001" :
-                                                placeholder.first == "Name" ? "Database school 2" :
-                                                "Sample";
-        }
-    }
+    SampleData::fillMissingForElement(element, context);
     painter.save();
     painter.setPen(QPen(selected ? QColor(0, 120, 215) : Qt::black, selected ? 2 : 1));
     painter.setBrush(Qt::white);

@@ -1,0 +1,8 @@
+/.vscode
+/build
+/build-*
+/out
+/CMakePresets.json
+/brainstorm.txt
+/todo.txt
+/third_party/zlib-ng+minizip-ng/third_party/zlib/

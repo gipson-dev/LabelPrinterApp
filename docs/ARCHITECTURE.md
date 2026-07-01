@@ -65,7 +65,7 @@ LabelPrinterApp/
 ## UI Classes
 
 - `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, and raw print commands.
-- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, vertically centered text, barcode/QR/shape previews, selection handles, cursor coordinates, drag-to-move positioning, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. Locked elements cannot be dragged or resized.
+- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, vertically centered text, barcode/QR/shape previews, selection handles, marquee multi-selection, cursor coordinates, drag-to-move positioning, group dragging, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. Barcode bounds use shared Zebra module-count sizing, and centered/right-aligned barcodes are positioned from the resolved print value so variable data stays aligned. Locked elements cannot be dragged or resized.
 - `ElementEditorWidget` is the right-side `Element Property Editor`. Its section buttons are true filtered pages:
   - `Text`: name, type, and element text
   - `Formatting`: font size, width, bold, italic, underline, wrap, auto-fit, max lines, and alignment
@@ -94,9 +94,11 @@ The Design tab uses a classic label-designer layout:
 - Right `Element Property Editor` with filtered property pages.
 - Bottom layout toolbar:
   - Align left, center, right, top, middle, and bottom
-  - Equal horizontal spacing for three or more elements
+  - Equal horizontal spacing for three or more selected elements
   - Bring forward and send backward for layer order
   - Lock and unlock selected elements
+
+Multiple elements can be selected by dragging a marquee on empty canvas space or Ctrl-clicking individual elements. Alignment commands operate on the selected group's bounds when more than one element is selected. For a single barcode, Align center/right sets a full-label alignment lane and generated ZPL offsets the barcode by the resolved printed value width.
 
 ## Persistent App Settings
 

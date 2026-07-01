@@ -11,8 +11,10 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Add Line and Box elements for dividers and outlines.
 - Move label items by dragging them in the preview.
 - Resize selected label items from the side and corner anchors on the design canvas.
+- Drag an empty canvas area to select multiple elements, then align, distribute, lock, or drag the group.
 - Double-click text elements to edit their text directly on the canvas.
 - Use Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help from the classic toolbar/menu.
+- Open `Help > Check for Updates` to visit the LabelPrinterApp releases page.
 - Preview and print text with vertical centering that more closely matches the selected text box.
 - Show or hide the design grid and enable snap-to-grid placement from the toolbar.
 - Use `Quick Print` from the Element Property Editor to print without leaving the Design tab.
@@ -45,10 +47,11 @@ Use the Design tab for most work:
 1. Pick the canvas size from `Canvas Template`.
 2. Click `Number` to add a number field.
 3. Click `Description` to add a description field.
-4. Click `Barcode` or `QR Code` if the label should scan.
-5. Select an element on the canvas.
-6. Use the `Element Property Editor` on the right to edit text, formatting, position, data binding, barcode settings, and print/lock state.
-7. Drag the selected element's anchors to resize it:
+4. Click `Date/Time` to add a field that automatically resolves to the current date and time.
+5. Click `Barcode` or `QR Code` if the label should scan.
+6. Select an element on the canvas.
+7. Use the `Element Property Editor` on the right to edit text, formatting, position, data binding, barcode settings, and print/lock state.
+8. Drag the selected element's anchors to resize it:
    - Side anchors adjust width or height.
    - Corner anchors adjust both.
    - Text height changes the font size.
@@ -58,12 +61,16 @@ Use the Design tab for most work:
    - Line and Box resizing changes shape width and height.
 
 Text is vertically centered inside its selected text box in the designer preview, and generated ZPL applies the matching Zebra text-origin correction for normal orientation printing.
+Barcode selection bounds use the same Code 128 module-count sizing used by Zebra output. When a barcode is aligned center or right, the app recenters the actual value being printed inside the alignment lane, so imported values with different lengths stay aligned.
 Double-click a text element to edit it in place; press Enter or click away to save the edit, or press Escape to cancel.
+Drag across empty canvas space to marquee-select multiple elements. Ctrl-click toggles individual elements in or out of the current selection. Alignment, equal spacing, lock/unlock, and drag movement apply to the selected group.
 
 For imported records, the normal field names are:
 
 - `Number`
 - `Description`
+
+Built-in placeholders such as `{Date}`, `{Time}`, `{DateTime}`, `{Serial}`, and `{RecordIndex}` resolve automatically and do not require imported data or print prompts.
 
 Without imported CSV/Excel data, fields such as `{Number}` and `{Description}` are prompted as user input when printing.
 

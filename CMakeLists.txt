@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(LabelPrinterApp VERSION 5.0.0 LANGUAGES CXX)
+project(LabelPrinterApp VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,6 +35,7 @@ set(CORE_SOURCES
 set(UI_SOURCES
     core/ExcelImporter.cpp
     core/RecordRangeParser.cpp
+    core/AppUpdater.cpp
     ui/MainWindow.cpp
     ui/PreviewWidget.cpp
     ui/ElementEditorWidget.cpp
@@ -47,6 +48,15 @@ if (LABELPRINTERAPP_BUILD_APP)
     if (NOT Qt6_FOUND)
         message(FATAL_ERROR "Qt 6 Widgets was not found. Install Qt 6 for MSVC and set CMAKE_PREFIX_PATH, for example: -DCMAKE_PREFIX_PATH=C:/Qt/6.7.3/msvc2022_64")
     endif()
+
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/AppVersion.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/core/AppVersion.h
+        @ONLY
+    )
+
+    set(LABELPRINTERAPP_UPDATE_BUILD_DOWNLOADER ON CACHE BOOL "" FORCE)
+    add_subdirectory(c-updater)
 
     if (LABELPRINTERAPP_ENABLE_XLSX)
         include(FetchContent)
@@ -68,7 +78,10 @@ if (LABELPRINTERAPP_BUILD_APP)
     )
 
     target_compile_definitions(LabelPrinterApp PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    target_include_directories(LabelPrinterApp PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_include_directories(LabelPrinterApp PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
+    )
     set_target_properties(LabelPrinterApp PROPERTIES
         AUTOMOC ON
         AUTOUIC ON
@@ -77,6 +90,7 @@ if (LABELPRINTERAPP_BUILD_APP)
     target_link_libraries(LabelPrinterApp PRIVATE
         Qt6::Widgets
         nlohmann_json::nlohmann_json
+        labelprinterapp_update
     )
     if (LABELPRINTERAPP_ENABLE_XLSX)
         target_compile_definitions(LabelPrinterApp PRIVATE LABELPRINTERAPP_ENABLE_XLSX)
@@ -107,6 +121,20 @@ if (LABELPRINTERAPP_BUILD_APP)
                 COMMENT "Deploying Qt runtime files"
             )
         endif()
+
+        # Small, Qt-free helper that applies a downloaded update
+        # (via labelprinterapp_update_manager) and relaunches LabelPrinterApp.
+        # Statically linked so it ships with no extra DLL dependencies,
+        # since it must keep running while its own directory is replaced.
+        add_executable(LabelPrinterAppLauncher WIN32 launcher/main.cpp)
+        target_compile_definitions(LabelPrinterAppLauncher PRIVATE
+            WIN32_LEAN_AND_MEAN
+            NOMINMAX
+            $<$<CXX_COMPILER_ID:MSVC>:_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS>
+        )
+        target_link_libraries(LabelPrinterAppLauncher PRIVATE labelprinterapp_update_manager)
+        set_property(TARGET LabelPrinterAppLauncher PROPERTY
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     else()
         message(FATAL_ERROR "LabelPrinterApp currently targets Windows RAW printer APIs.")
     endif()

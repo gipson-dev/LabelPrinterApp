@@ -1,10 +1,22 @@
 # Changelog
 
+## 2026-07-01
+
+- Wired in `c-updater` for self-updating: `Help > Check for Updates` (plus a silent startup check) now checks GitHub releases for `gipson-dev/LabelPrinterApp`, downloads and verifies newer `LabelPrinterApp_Portable.zip` releases in the background, and hands off to a new `LabelPrinterAppLauncher.exe` to apply the update and relaunch on restart, retaining `templates/` and `logs/`.
+- Vendored `c-updater` (and its `nlohmann/json`, `googletest`, `minizip-ng` dependencies) as plain tracked source rather than git submodules, so CI and fresh clones build it without extra setup.
+- Bumped the project version to 1.0.0 to match the `v1.0.0` release tag and give the new update checker a comparable version number.
+
 ## 2026-06-26
 
 - Centered text vertically in the designer preview and adjusted generated ZPL text origins so printed Zebra labels match the selected text box more closely.
+- Matched barcode preview/selection sizing to Zebra Code 128 module counts so center alignment and printed barcode position agree with the canvas.
+- Fixed barcode centering for real print values by aligning Code 128 output inside the label-width lane at ZPL generation time and forcing the same Code 128 Code B encoding used by the preview.
+- Fixed the Date/Time tool so new date/time fields use the live `{DateTime}` built-in and preview/print current date and time automatically.
+- Added `Help > Check for Updates`, which opens the LabelPrinterApp GitHub releases page.
+- Reused the same sample placeholder values for designer preview, ZPL preview, and Quick Print when no imported row is active.
 - Added in-place canvas editing for text elements: double-click a text field, edit inside the selected element, press Enter or click away to commit, or press Escape to cancel.
 - Changed new Text, Number, and Serial # elements to use regular font weight by default instead of auto-enabling Bold.
+- Added multi-element canvas selection with drag-marquee selection, Ctrl-click add/remove selection, group dragging, and group-aware align/distribute/lock actions.
 - Fixed VS Code C/C++ IntelliSense for `core/TemplateStorage.cpp` by adding fetched `nlohmann/json.hpp` include paths to `.vscode/c_cpp_properties.json`.
 - Reworked the roadmap from the project planning notes with release status, phase detail, version plan, manual QA summary, and remaining work.
 - Fixed 4 x 2 landscape printing so generated ZPL keeps fields unrotated while respecting the designer canvas orientation.

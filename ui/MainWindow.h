@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QMainWindow>
 #include <QTableWidget>
 
@@ -21,6 +22,7 @@ class QPushButton;
 class QSpinBox;
 class QTabWidget;
 
+class AppUpdater;
 class ElementEditorWidget;
 class ExcelRecordsWidget;
 class PreviewWidget;
@@ -74,6 +76,7 @@ private:
     void saveUndoState();
     void restoreFromHistory(const LabelTemplate& labelTemplate);
     void showHelp();
+    void checkForUpdates();
     void duplicateSelectedElement();
     void deleteSelectedElement();
     void moveSelectedElement(int offset);
@@ -101,6 +104,8 @@ private:
     void printAllCsvRows();
     void updateTemplateFromSettings();
     void selectElement(int index);
+    void selectElements(const QList<int>& indexes);
+    std::vector<int> selectedEditableIndexes() const;
     VariableContext contextForRow(int rowIndex) const;
     VariableContext promptContext() const;
     std::map<std::string, std::string> csvMapping() const;
@@ -115,6 +120,7 @@ private:
     std::vector<LabelTemplate> undoStack_;
     std::vector<LabelTemplate> redoStack_;
     int selectedElement_ = -1;
+    std::vector<int> selectedElements_;
 
     QTabWidget* tabs_ = nullptr;
     PreviewWidget* preview_ = nullptr;
@@ -148,4 +154,6 @@ private:
     QLabel* statusStockLabel_ = nullptr;
     QLabel* statusDpiLabel_ = nullptr;
     QLabel* statusZoomLabel_ = nullptr;
+    AppUpdater* appUpdater_ = nullptr;
+    bool updateCheckIsManual_ = false;
 };

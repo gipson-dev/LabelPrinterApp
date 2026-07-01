@@ -35,6 +35,8 @@ coverage/
 .cache/
 .tmp/
 tmp/
+/CMakeFiles/
+/CMakeCache.txt
 
 # Python caches
 __pycache__/

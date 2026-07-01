@@ -13,6 +13,11 @@ if (!(Test-Path $exePath)) {
     throw "Expected executable was not found: $exePath"
 }
 
+$launcherExePath = Join-Path $BuildDir "$Config\LabelPrinterAppLauncher.exe"
+if (!(Test-Path $launcherExePath)) {
+    throw "Expected executable was not found: $launcherExePath"
+}
+
 if (Test-Path $OutputDir) {
     Remove-Item -LiteralPath $OutputDir -Recurse -Force
 }
@@ -21,15 +26,14 @@ New-Item -ItemType Directory -Path $OutputDir | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $OutputDir "templates") | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $OutputDir "examples") | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $OutputDir "docs") | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $OutputDir "logs") | Out-Null
 
 Copy-Item -LiteralPath $exePath -Destination (Join-Path $OutputDir "LabelPrinterApp.exe")
+Copy-Item -LiteralPath $launcherExePath -Destination (Join-Path $OutputDir "LabelPrinterAppLauncher.exe")
 Copy-Item -Path "templates\*.json" -Destination (Join-Path $OutputDir "templates")
 Copy-Item -Path "examples\*.csv" -Destination (Join-Path $OutputDir "examples")
 Copy-Item -Path "docs\*" -Destination (Join-Path $OutputDir "docs")
 Copy-Item -LiteralPath "README.md" -Destination (Join-Path $OutputDir "README.md")
 Copy-Item -LiteralPath "LICENSE" -Destination (Join-Path $OutputDir "LICENSE")
-Set-Content -Path (Join-Path $OutputDir "logs\print_history.csv") -Value "Timestamp,Printer,Template,Mode,Rows,Copies,Success,Message"
 
 $windeployqt = $null
 $windeployqtCommand = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
