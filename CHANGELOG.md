@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-02
+
+- Bumped the project version to 1.0.2 for the next patch release.
+- Fixed release packaging so the OpenSSL `libssl`/`libcrypto` runtime DLLs used by the self-update checker are copied into the portable ZIP and beta setup package beside `LabelPrinterApp.exe`.
+
 ## 2026-07-01
 
 - Bumped the project version to 1.0.1 to match the `v1.0.1` release tag.

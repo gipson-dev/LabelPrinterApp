@@ -6,6 +6,115 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-CMakeCacheValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $cachePath = Join-Path $BuildDir "CMakeCache.txt"
+    if (!(Test-Path $cachePath)) {
+        return $null
+    }
+
+    $pattern = "^$([regex]::Escape($Name)):[^=]*=(.*)$"
+    $match = Select-String -LiteralPath $cachePath -Pattern $pattern | Select-Object -First 1
+    if (!$match) {
+        return $null
+    }
+
+    return $match.Matches[0].Groups[1].Value.Trim()
+}
+
+function Add-DirectoryCandidate {
+    param(
+        [System.Collections.Generic.List[string]]$Candidates,
+        [string]$Path
+    )
+
+    if (!$Path) {
+        return
+    }
+
+    $resolved = Resolve-Path $Path -ErrorAction SilentlyContinue
+    if (!$resolved) {
+        return
+    }
+
+    $fullPath = $resolved.Path
+    if (!$Candidates.Contains($fullPath)) {
+        $Candidates.Add($fullPath)
+    }
+}
+
+function Add-OpenSslRootCandidate {
+    param(
+        [System.Collections.Generic.List[string]]$Candidates,
+        [string]$Root
+    )
+
+    if (!$Root) {
+        return
+    }
+
+    Add-DirectoryCandidate -Candidates $Candidates -Path (Join-Path $Root "bin")
+    Add-DirectoryCandidate -Candidates $Candidates -Path $Root
+}
+
+function Add-OpenSslLibCandidate {
+    param(
+        [System.Collections.Generic.List[string]]$Candidates,
+        [string]$LibPath
+    )
+
+    if (!$LibPath) {
+        return
+    }
+
+    $libDirectory = Split-Path -Parent $LibPath
+    if (!$libDirectory) {
+        return
+    }
+
+    foreach ($relativePath in @("..\..\..\bin", "..\..\..", "..\..\..\..", ".", "..")) {
+        Add-DirectoryCandidate -Candidates $Candidates -Path (Join-Path $libDirectory $relativePath)
+    }
+}
+
+function Copy-OpenSslRuntimeDlls {
+    $candidateDirectories = [System.Collections.Generic.List[string]]::new()
+
+    Add-OpenSslRootCandidate -Candidates $candidateDirectories -Root (Get-CMakeCacheValue -Name "OPENSSL_ROOT_DIR")
+    Add-OpenSslRootCandidate -Candidates $candidateDirectories -Root $env:OPENSSL_ROOT_DIR
+    Add-OpenSslLibCandidate -Candidates $candidateDirectories -LibPath (Get-CMakeCacheValue -Name "SSL_EAY_RELEASE")
+    Add-OpenSslLibCandidate -Candidates $candidateDirectories -LibPath (Get-CMakeCacheValue -Name "LIB_EAY_RELEASE")
+
+    foreach ($commonRoot in @(
+        "C:\Program Files\OpenSSL-Win64",
+        "C:\Program Files\OpenSSL",
+        "C:\OpenSSL-Win64",
+        "C:\OpenSSL"
+    )) {
+        Add-OpenSslRootCandidate -Candidates $candidateDirectories -Root $commonRoot
+    }
+
+    foreach ($directory in $candidateDirectories) {
+        $sslDlls = Get-ChildItem -LiteralPath $directory -Filter "libssl*.dll" -ErrorAction SilentlyContinue
+        $cryptoDlls = Get-ChildItem -LiteralPath $directory -Filter "libcrypto*.dll" -ErrorAction SilentlyContinue
+        if (!$sslDlls -or !$cryptoDlls) {
+            continue
+        }
+
+        foreach ($dll in @($sslDlls) + @($cryptoDlls)) {
+            Copy-Item -LiteralPath $dll.FullName -Destination (Join-Path $OutputDir $dll.Name) -Force
+        }
+        Write-Host "Copied OpenSSL runtime DLLs from $directory"
+        return
+    }
+
+    Write-Warning "OpenSSL runtime DLLs were not found. The update checker requires libssl/libcrypto DLLs beside LabelPrinterApp.exe."
+}
+
 & "$PSScriptRoot\build-and-test.ps1" -Config $Config -BuildDir $BuildDir
 
 $exePath = Join-Path $BuildDir "$Config\LabelPrinterApp.exe"
@@ -70,6 +179,8 @@ if ($windeployqt) {
 } else {
     Write-Warning "windeployqt.exe was not found. Copy Qt runtime DLLs manually or add Qt bin to PATH."
 }
+
+Copy-OpenSslRuntimeDlls
 
 $distRoot = Split-Path -Parent $OutputDir
 $portableZip = Join-Path $distRoot "LabelPrinterApp_Portable.zip"

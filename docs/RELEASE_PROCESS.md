@@ -9,7 +9,7 @@ The packaged release contains:
 - `LabelPrinterApp_Portable.zip`
 - `LabelPrinterApp_Setup.exe`
 
-The portable ZIP contains `LabelPrinterApp.exe`, `LabelPrinterAppLauncher.exe`, Qt runtime files, blank templates, examples, docs, and an initial print-history file.
+The portable ZIP contains `LabelPrinterApp.exe`, `LabelPrinterAppLauncher.exe`, Qt runtime files, OpenSSL runtime DLLs for the update checker, blank templates, examples, docs, and an initial print-history file.
 
 These are also the releases that LabelPrinterApp's in-app updater (`Help > Check for Updates` and the silent startup check) looks for at `gipson-dev/LabelPrinterApp`. The updater reads the version from the `v*` tag and only recognizes an asset named exactly `LabelPrinterApp_Portable.zip`, so keep both conventions unchanged.
 
@@ -30,11 +30,12 @@ Before tagging a release:
 .\scripts\package-release.ps1 -Config Release
 ```
 
-4. Open `dist\LabelPrinterApp\LabelPrinterApp.exe`.
-5. Run the manual checks in `docs\MANUAL_QA_CHECKLIST.md`, including the `Check for Updates` flow against the currently-latest published GitHub release.
-6. Review `docs\KNOWN_ISSUES.md` and update it with any new release-specific limitations.
-7. In VS Code, open `core\TemplateStorage.cpp` and confirm C/C++ IntelliSense resolves `nlohmann/json.hpp` after configure/build.
-8. Bump the project version in the root `CMakeLists.txt` (`project(LabelPrinterApp VERSION ...)`) to match the tag you are about to push, so the update checker can compare versions correctly.
+4. Confirm `dist\LabelPrinterApp` and `dist\LabelPrinterApp_Portable.zip` include matching `libssl*.dll` and `libcrypto*.dll` files beside `LabelPrinterApp.exe`.
+5. Open `dist\LabelPrinterApp\LabelPrinterApp.exe`.
+6. Run the manual checks in `docs\MANUAL_QA_CHECKLIST.md`, including the `Check for Updates` flow against the currently-latest published GitHub release.
+7. Review `docs\KNOWN_ISSUES.md` and update it with any new release-specific limitations.
+8. In VS Code, open `core\TemplateStorage.cpp` and confirm C/C++ IntelliSense resolves `nlohmann/json.hpp` after configure/build.
+9. Bump the project version in the root `CMakeLists.txt` (`project(LabelPrinterApp VERSION ...)`) to match the tag you are about to push, so the update checker can compare versions correctly.
 
 ## Publish A Beta Release
 

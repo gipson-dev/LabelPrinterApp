@@ -209,7 +209,7 @@ Build a distributable folder:
 .\scripts\package-release.ps1 -Config Release
 ```
 
-The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe` and the small `LabelPrinterAppLauncher.exe` update-apply helper. If `windeployqt.exe` is available, the Qt runtime files are copied automatically.
+The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe` and the small `LabelPrinterAppLauncher.exe` update-apply helper. If `windeployqt.exe` is available, the Qt runtime files are copied automatically. The script also copies the OpenSSL `libssl`/`libcrypto` runtime DLLs used by the update checker.
 
 The package script also creates beta distribution artifacts:
 
