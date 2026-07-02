@@ -573,13 +573,14 @@ public:
 
     std::unique_ptr<labelprinterapp::update::launcher> launcher() const
     {
-        // Open a Developer Command Prompt for VS 2022 (or newer),
-        // cd into the directory of the test executable and execute this:
-        // > dumpbin /dependents labelprinterapp_update_test.exe
-        // Put the output into this vector.
+        // OpenSSL 3 and 4 runtime names are both listed so launcher-copy
+        // tests stay compatible across developer machines and release builds.
+        // Missing DLL names are ignored by launcher::copy_to().
         std::vector<std::filesystem::path> dlls = {
             "libssl-3-x64.dll.txt",
             "libcrypto-3-x64.dll.txt",
+            "libssl-4-x64.dll.txt",
+            "libcrypto-4-x64.dll.txt",
             "KERNEL32.dll.txt",
             "USER32.dll.txt",
             "SHELL32.dll.txt",

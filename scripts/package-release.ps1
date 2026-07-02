@@ -81,9 +81,96 @@ function Add-OpenSslLibCandidate {
     }
 }
 
+function Add-PathDirectoryCandidates {
+    param(
+        [System.Collections.Generic.List[string]]$Candidates
+    )
+
+    foreach ($pathEntry in ($env:PATH -split [IO.Path]::PathSeparator)) {
+        Add-DirectoryCandidate -Candidates $Candidates -Path $pathEntry
+    }
+}
+
+function Get-VisualStudioTool {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    foreach ($root in @(
+        "C:\Program Files\Microsoft Visual Studio",
+        "C:\Program Files (x86)\Microsoft Visual Studio",
+        "C:\Program Files (x86)\Windows Kits",
+        "C:\Program Files\Microsoft SDKs"
+    )) {
+        if (!(Test-Path $root)) {
+            continue
+        }
+
+        $tool = Get-ChildItem -LiteralPath $root -Recurse -Filter $Name -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match "\\x64\\" -or $_.FullName -match "\\Hostx64\\x64\\" } |
+            Select-Object -First 1
+        if ($tool) {
+            return $tool.FullName
+        }
+    }
+
+    return $null
+}
+
+function Get-ImportedDllNames {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ExePath
+    )
+
+    $dumpbin = Get-VisualStudioTool -Name "dumpbin.exe"
+    if (!$dumpbin) {
+        Write-Warning "dumpbin.exe was not found. OpenSSL runtime copying will fall back to candidate directories."
+        return @()
+    }
+
+    $output = & $dumpbin /DEPENDENTS $ExePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "dumpbin.exe failed while inspecting $ExePath."
+    }
+
+    return $output |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -match "^[A-Za-z0-9_.+-]+\.dll$" } |
+        Select-Object -Unique
+}
+
+function Get-OpenSslRuntimeDllNames {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ExePath
+    )
+
+    $imports = Get-ImportedDllNames -ExePath $ExePath
+    $opensslImports = @($imports | Where-Object { $_ -match "^lib(ssl|crypto).+\.dll$" })
+    if ($opensslImports.Count -gt 0) {
+        return $opensslImports
+    }
+
+    return @("libssl*.dll", "libcrypto*.dll")
+}
+
 function Copy-OpenSslRuntimeDlls {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ExePath
+    )
+
     $candidateDirectories = [System.Collections.Generic.List[string]]::new()
 
+    Add-DirectoryCandidate -Candidates $candidateDirectories -Path (Split-Path -Parent $ExePath)
+    Add-DirectoryCandidate -Candidates $candidateDirectories -Path $OutputDir
     Add-OpenSslRootCandidate -Candidates $candidateDirectories -Root (Get-CMakeCacheValue -Name "OPENSSL_ROOT_DIR")
     Add-OpenSslRootCandidate -Candidates $candidateDirectories -Root $env:OPENSSL_ROOT_DIR
     Add-OpenSslLibCandidate -Candidates $candidateDirectories -LibPath (Get-CMakeCacheValue -Name "SSL_EAY_RELEASE")
@@ -93,26 +180,130 @@ function Copy-OpenSslRuntimeDlls {
         "C:\Program Files\OpenSSL-Win64",
         "C:\Program Files\OpenSSL",
         "C:\OpenSSL-Win64",
-        "C:\OpenSSL"
+        "C:\OpenSSL",
+        "C:\Program Files\Git\mingw64",
+        "C:\Program Files\Git\mingw64\bin",
+        "C:\Program Files\Git\mingw64\libexec\git-core"
     )) {
         Add-OpenSslRootCandidate -Candidates $candidateDirectories -Root $commonRoot
     }
+    Add-PathDirectoryCandidates -Candidates $candidateDirectories
 
-    foreach ($directory in $candidateDirectories) {
-        $sslDlls = Get-ChildItem -LiteralPath $directory -Filter "libssl*.dll" -ErrorAction SilentlyContinue
-        $cryptoDlls = Get-ChildItem -LiteralPath $directory -Filter "libcrypto*.dll" -ErrorAction SilentlyContinue
-        if (!$sslDlls -or !$cryptoDlls) {
-            continue
+    $requiredDllNames = @(Get-OpenSslRuntimeDllNames -ExePath $ExePath)
+    $copied = [System.Collections.Generic.List[string]]::new()
+    foreach ($requiredDllName in $requiredDllNames) {
+        $match = $null
+        foreach ($directory in $candidateDirectories) {
+            $match = Get-ChildItem -LiteralPath $directory -Filter $requiredDllName -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if ($match) {
+                break
+            }
         }
 
-        foreach ($dll in @($sslDlls) + @($cryptoDlls)) {
-            Copy-Item -LiteralPath $dll.FullName -Destination (Join-Path $OutputDir $dll.Name) -Force
+        if (!$match) {
+            if ($requiredDllName.Contains("*")) {
+                continue
+            }
+            throw "Required OpenSSL runtime DLL was not found: $requiredDllName. Install the matching OpenSSL runtime or rebuild after updating OPENSSL_ROOT_DIR."
         }
-        Write-Host "Copied OpenSSL runtime DLLs from $directory"
+
+        Copy-Item -LiteralPath $match.FullName -Destination (Join-Path $OutputDir $match.Name) -Force
+        $copied.Add($match.Name)
+    }
+
+    if ($copied.Count -gt 0) {
+        Write-Host "Copied OpenSSL runtime DLLs: $($copied -join ', ')"
+    } else {
+        Write-Warning "OpenSSL runtime DLLs were not found. The update checker requires libssl/libcrypto DLLs beside LabelPrinterApp.exe."
+    }
+
+    Copy-OpenSslCompatibilityRuntimeDlls -CandidateDirectories $candidateDirectories
+}
+
+function Copy-OpenSslCompatibilityRuntimeDlls {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$CandidateDirectories
+    )
+
+    foreach ($pair in @(
+        @("libssl-3-x64.dll", "libcrypto-3-x64.dll"),
+        @("libssl-4-x64.dll", "libcrypto-4-x64.dll")
+    )) {
+        Copy-OptionalOpenSslRuntimePair `
+            -CandidateDirectories $CandidateDirectories `
+            -SslDllName $pair[0] `
+            -CryptoDllName $pair[1]
+    }
+}
+
+function Copy-OptionalOpenSslRuntimePair {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Generic.List[string]]$CandidateDirectories,
+        [Parameter(Mandatory = $true)]
+        [string]$SslDllName,
+        [Parameter(Mandatory = $true)]
+        [string]$CryptoDllName
+    )
+
+    if ((Test-Path (Join-Path $OutputDir $SslDllName)) -and
+        (Test-Path (Join-Path $OutputDir $CryptoDllName))) {
         return
     }
 
-    Write-Warning "OpenSSL runtime DLLs were not found. The update checker requires libssl/libcrypto DLLs beside LabelPrinterApp.exe."
+    foreach ($directory in $CandidateDirectories) {
+        $ssl = Get-ChildItem -LiteralPath $directory -Filter $SslDllName -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        $crypto = Get-ChildItem -LiteralPath $directory -Filter $CryptoDllName -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if (!$ssl -or !$crypto) {
+            continue
+        }
+
+        Copy-Item -LiteralPath $ssl.FullName -Destination (Join-Path $OutputDir $ssl.Name) -Force
+        Copy-Item -LiteralPath $crypto.FullName -Destination (Join-Path $OutputDir $crypto.Name) -Force
+        Write-Host "Copied optional OpenSSL compatibility DLLs: $SslDllName, $CryptoDllName"
+        return
+    }
+
+    Write-Warning "Optional OpenSSL compatibility DLLs were not found: $SslDllName, $CryptoDllName"
+}
+
+function Add-RequireAdministratorManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ExePath,
+        [Parameter(Mandatory = $true)]
+        [string]$WorkDir
+    )
+
+    $mt = Get-VisualStudioTool -Name "mt.exe"
+    if (!$mt) {
+        Write-Warning "mt.exe was not found. The setup EXE was created, but no UAC manifest was embedded."
+        return
+    }
+
+    $manifestPath = Join-Path $WorkDir "LabelPrinterApp_Setup.manifest"
+    $manifest = @'
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>
+'@
+    Set-Content -LiteralPath $manifestPath -Value $manifest -Encoding UTF8
+    & $mt -manifest $manifestPath "-outputresource:$ExePath;#1" | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "mt.exe failed while embedding the UAC manifest in $ExePath."
+    }
+    Write-Host "Embedded requireAdministrator manifest in $ExePath"
 }
 
 & "$PSScriptRoot\build-and-test.ps1" -Config $Config -BuildDir $BuildDir
@@ -180,7 +371,7 @@ if ($windeployqt) {
     Write-Warning "windeployqt.exe was not found. Copy Qt runtime DLLs manually or add Qt bin to PATH."
 }
 
-Copy-OpenSslRuntimeDlls
+Copy-OpenSslRuntimeDlls -ExePath (Join-Path $OutputDir "LabelPrinterApp.exe")
 
 $distRoot = Split-Path -Parent $OutputDir
 $portableZip = Join-Path $distRoot "LabelPrinterApp_Portable.zip"
@@ -265,6 +456,7 @@ SourceFiles0=$installerWorkSed
     if ($process.ExitCode -ne 0) {
         throw "iexpress.exe failed with exit code $($process.ExitCode)."
     }
+    Add-RequireAdministratorManifest -ExePath $setupExe -WorkDir $installerWork
 } else {
     Write-Warning "iexpress.exe was not found. Skipping LabelPrinterApp_Setup.exe."
 }

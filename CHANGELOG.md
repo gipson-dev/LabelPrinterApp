@@ -2,8 +2,16 @@
 
 ## 2026-07-02
 
+### 1.0.3
+
+- Bumped the project version to 1.0.3 for the OpenSSL runtime packaging fix release.
+- Fixed release packaging so the OpenSSL `libssl`/`libcrypto` runtime DLLs used by the self-update checker are copied into the portable ZIP and beta setup package beside `LabelPrinterApp.exe`, matching the exact DLL names imported by the built app.
+- Included OpenSSL 3 and OpenSSL 4 runtime DLL pairs in release packages when available, so older beta binaries and current builds can both find the runtime names they expect.
+- Embedded a `requireAdministrator` manifest in the generated beta setup EXE so Windows shows a UAC prompt before installation.
+
+### 1.0.2
+
 - Bumped the project version to 1.0.2 for the next patch release.
-- Fixed release packaging so the OpenSSL `libssl`/`libcrypto` runtime DLLs used by the self-update checker are copied into the portable ZIP and beta setup package beside `LabelPrinterApp.exe`.
 
 ## 2026-07-01
 

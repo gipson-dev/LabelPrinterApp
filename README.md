@@ -209,14 +209,14 @@ Build a distributable folder:
 .\scripts\package-release.ps1 -Config Release
 ```
 
-The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe` and the small `LabelPrinterAppLauncher.exe` update-apply helper. If `windeployqt.exe` is available, the Qt runtime files are copied automatically. The script also copies the OpenSSL `libssl`/`libcrypto` runtime DLLs used by the update checker.
+The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe` and the small `LabelPrinterAppLauncher.exe` update-apply helper. If `windeployqt.exe` is available, the Qt runtime files are copied automatically. The script copies the exact OpenSSL `libssl`/`libcrypto` runtime DLLs imported by `LabelPrinterApp.exe`, plus OpenSSL 3 and 4 compatibility DLL pairs when available.
 
 The package script also creates beta distribution artifacts:
 
 - `dist\LabelPrinterApp_Portable.zip`
 - `dist\LabelPrinterApp_Setup.exe`, when Windows `iexpress.exe` is available
 
-The setup EXE is a simple beta installer that extracts the portable ZIP to the user's local app data folder, creates a desktop shortcut, and starts the app.
+The setup EXE is a simple beta installer that prompts for UAC, extracts the portable ZIP to the user's local app data folder, creates a desktop shortcut, and starts the app.
 
 ## GitHub Releases
 
