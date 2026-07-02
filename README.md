@@ -14,8 +14,9 @@ The app lets you design a label, preview it, fill in values, import a CSV file, 
 - Drag an empty canvas area to select multiple elements, then align, distribute, lock, or drag the group.
 - Double-click text elements to edit their text directly on the canvas.
 - Use Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help from the classic toolbar/menu.
+- See the current app version in the main window title and About dialog.
 - Check for and self-apply app updates: `Help > Check for Updates` (and a quiet check a few seconds after startup) looks for a newer GitHub release, downloads and verifies it in the background, and offers to restart into it.
-- Preview and print text with vertical centering that more closely matches the selected text box.
+- Preview and print text with sizing and vertical centering that more closely match the selected text box.
 - Show or hide the design grid and enable snap-to-grid placement from the toolbar.
 - Use `Quick Print` from the Element Property Editor to print without leaving the Design tab.
 - Work in focused tabs for Design, Elements, Data, Print, Templates, and Settings.
@@ -60,7 +61,7 @@ Use the Design tab for most work:
    - QR size changes QR magnification.
    - Line and Box resizing changes shape width and height.
 
-Text is vertically centered inside its selected text box in the designer preview, and generated ZPL applies the matching Zebra text-origin correction for normal orientation printing.
+Text is vertically centered inside its selected text box in the designer preview, and generated ZPL applies matching Zebra text sizing/origin corrections for normal orientation printing.
 Barcode selection bounds use the same Code 128 module-count sizing used by Zebra output. When a barcode is aligned center or right, the app recenters the actual value being printed inside the alignment lane, so imported values with different lengths stay aligned.
 Double-click a text element to edit it in place; press Enter or click away to save the edit, or press Escape to cancel.
 Drag across empty canvas space to marquee-select multiple elements. Ctrl-click toggles individual elements in or out of the current selection. Alignment, equal spacing, lock/unlock, and drag movement apply to the selected group.
@@ -227,7 +228,7 @@ The release workflow uploads:
 - `LabelPrinterApp_Portable.zip`
 - `LabelPrinterApp_Setup.exe`
 
-These are the same GitHub releases (`gipson-dev/LabelPrinterApp`) that the in-app updater checks. The updater reads the version from the release's `v*` tag and downloads whichever release asset is named exactly `LabelPrinterApp_Portable.zip`, so keep using that literal filename for the portable ZIP.
+These are the same GitHub releases (`gipson-dev/LabelPrinterApp`) that the in-app updater checks. The updater reads the version from the release's `v*` tag and downloads whichever release asset is named exactly `LabelPrinterApp_Portable.zip`, so keep using that literal filename for the portable ZIP. The app window title and About dialog show the CMake project version that should match the release tag.
 
 See [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) for the full release checklist.
 

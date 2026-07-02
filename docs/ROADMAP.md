@@ -4,7 +4,7 @@
 
 Build a Windows desktop label-design and Zebra-printing application for custom text, number, barcode, QR, line, box, and batch labels. The application supports editable templates, Excel/CSV data import, print preview, Zebra ZPL output, printer settings, print history, developer-friendly local setup, and release packaging.
 
-The current application covers the requested Version 1 through Version 5 feature set and includes the classic desktop designer UI pass. `v1.0.0` has been tagged and published as a GitHub release, and the app can now check for and apply newer releases on its own. Clean-machine and physical-printer QA hardening from the beta phase continues in parallel; see [Known Remaining Work](#known-remaining-work) and [docs/KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+The current application covers the requested Version 1 through Version 5 feature set and includes the classic desktop designer UI pass. `v1.0.4` is the current patch release line, and the app can check for and apply newer GitHub releases on its own. Clean-machine and physical-printer QA hardening from the beta phase continues in parallel; see [Known Remaining Work](#known-remaining-work) and [docs/KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Release Status Overview
 
@@ -18,7 +18,7 @@ The current application covers the requested Version 1 through Version 5 feature
 | Self-updating releases | Complete | `Help > Check for Updates` and a silent startup check ask GitHub releases for `gipson-dev/LabelPrinterApp`, download and verify newer `LabelPrinterApp_Portable.zip` builds in the background, and hand off to `LabelPrinterAppLauncher.exe` to apply the update and relaunch, retaining `templates\` and `logs\`. |
 | Developer setup | Beta-ready | CMake/Qt build path is documented and VS Code C/C++ IntelliSense resolves fetched `nlohmann/json.hpp` after configure/build. |
 | Testing and calibration | In progress | Automated core tests exist; physical printer calibration and clean-machine manual QA remain. |
-| Production polish | In progress | Image/logo support, installer polish, version display, final calibration controls, and print history viewer enhancements (export, clear, reprint) remain. |
+| Production polish | In progress | Image/logo support, installer polish, final calibration controls, and print history viewer enhancements (export, clear, reprint) remain. |
 
 ## Phase Roadmap
 
@@ -67,15 +67,16 @@ The current application covers the requested Version 1 through Version 5 feature
 - Release package output under `dist\LabelPrinterApp`.
 - VS Code C/C++ IntelliSense include paths for fetched `nlohmann/json.hpp` in the local build folders.
 - Self-updating releases: a startup check plus `Help > Check for Updates` download and verify newer GitHub releases in the background and relaunch through `LabelPrinterAppLauncher.exe` to apply them, keeping `templates\` and `logs\` intact.
-- `v1.0.0` tagged and published as a GitHub release.
+- App version shown in the main window title and About dialog.
+- `v1.0.4` prepared as the current preview/print and canvas alignment fix release.
 - In-app Print History viewer from `View > Print History`, reading `logs\print_history.csv` into a refreshable, most-recent-first table with color-coded success/failure.
 
 ## Immediate Next Order
 
-1. Run the manual QA checklist against the `v1.0.0` package on a clean Windows machine, including the update-check/apply/relaunch flow end to end against a real newer release.
+1. Run the manual QA checklist against the latest `v1.0.x` package on a clean Windows machine, including the update-check/apply/relaunch flow end to end against a real newer release.
 2. Run physical printer calibration checks on both 203 DPI and 300 DPI Zebra printers.
 3. Fix issues found during clean-machine and printer testing, especially runtime files, startup path, templates, settings, print offsets, DPI scaling, font preview differences, barcode sizing, and CSV/Excel edge cases.
-4. Add the remaining high-value production features: image/logo support, print history export/clear/reprint, keyboard nudging, calibration offset controls, installer polish, in-app version display, screenshots, and release notes.
+4. Add the remaining high-value production features: image/logo support, print history export/clear/reprint, keyboard nudging, calibration offset controls, installer polish, screenshots, and release notes.
 5. Cut the next patch/point release once clean-machine and printer QA sign off.
 
 ## Recommended Version Plan
@@ -112,6 +113,8 @@ Likely includes:
 Goal: first stable release.
 
 Status: tagged and published as `v1.0.0`, including self-updating release delivery. Clean-machine install, physical printer calibration, and barcode/QR scan validation from the list below are still being hardened; see [Known Remaining Work](#known-remaining-work).
+
+Patch line: `v1.0.4` adds in-app version display plus preview/print text sizing and visible-box Align middle corrections.
 
 Must include:
 

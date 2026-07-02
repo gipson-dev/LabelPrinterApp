@@ -86,7 +86,7 @@ namespace
         assert(zpl.find("^PR5") != std::string::npos);
         assert(zpl.find("^MNM") != std::string::npos);
         assert(zpl.find("^FWN") != std::string::npos);
-        assert(zpl.find("^FO14,15\n^A0N,28,24") != std::string::npos);
+        assert(zpl.find("^FO14,15\n^A0N,39,33") != std::string::npos);
         assert(zpl.find("^BCN,48,Y,N,N") != std::string::npos);
         assert(zpl.find("^B3N,N,35,N,N") != std::string::npos);
         assert(zpl.find("^BQN,2,3") != std::string::npos);
@@ -181,6 +181,27 @@ namespace
         assert(zpl.find("^FD>:11111122222") != std::string::npos);
     }
 
+    void ManualTextPrintSizeMatchesDesignerIntent()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+
+        LabelElement text;
+        text.type = LabelElementType::Text;
+        text.text = "Sample Text";
+        text.xInches = 0.16;
+        text.yInches = 0.12;
+        text.boxWidthInches = 1.85;
+        text.fontHeightDots = 62;
+        text.fontWidthDots = 46;
+        label.elements.push_back(text);
+
+        const std::string zpl = ZplGenerator::generate(label);
+
+        assert(zpl.find("^FO32,39\n^A0N,86,64") != std::string::npos);
+        assert(zpl.find("^FDSample Text") != std::string::npos);
+    }
+
     void SerialRangeGeneratesAscendingAndDescendingJobs()
     {
         LabelTemplate label = LabelTemplate::defaultTemplate();
@@ -268,6 +289,7 @@ int main()
     BarcodeMetricsMatchZebraCode128Width();
     SampleDataLeavesDateTimeBuiltInsLive();
     CenteredCode128BarcodeUsesActualPrintedValueWidth();
+    ManualTextPrintSizeMatchesDesignerIntent();
     SerialRangeGeneratesAscendingAndDescendingJobs();
     CsvImporterDetectsHeadersAndMapsRows();
     TemplateStorageRoundTripsVersionFiveTemplate();

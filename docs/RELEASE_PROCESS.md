@@ -36,6 +36,7 @@ Before tagging a release:
 7. Review `docs\KNOWN_ISSUES.md` and update it with any new release-specific limitations.
 8. In VS Code, open `core\TemplateStorage.cpp` and confirm C/C++ IntelliSense resolves `nlohmann/json.hpp` after configure/build.
 9. Bump the project version in the root `CMakeLists.txt` (`project(LabelPrinterApp VERSION ...)`) to match the tag you are about to push, so the update checker can compare versions correctly.
+10. Confirm the packaged app title and About dialog show the same `v*` version you are about to tag.
 
 ## Publish A Beta Release
 
@@ -81,6 +82,8 @@ The current beta includes:
 - Line and Box design elements with preview, resizing, template storage, and ZPL output.
 - Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help actions in the classic toolbar/menu.
 - Font sizes above 72 dots.
+- App version shown in the main window title and About dialog.
+- Preview/print text sizing corrections and visible-box Align middle behavior for selected text.
 - Zebra RAW ZPL printing through Windows printers.
 - Persistent app settings and print history.
 - VS Code C/C++ include paths for fetched `nlohmann/json.hpp` so local developer squiggles match the CMake build.

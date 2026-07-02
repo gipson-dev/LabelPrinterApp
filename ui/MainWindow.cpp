@@ -52,6 +52,7 @@
 #include <set>
 
 #include "core/AppUpdater.h"
+#include "core/AppVersion.h"
 #include "core/BarcodeMetrics.h"
 #include "core/CsvImporter.h"
 #include "core/SampleData.h"
@@ -65,6 +66,14 @@
 
 namespace
 {
+QString appVersionText()
+{
+    return QString("%1.%2.%3")
+        .arg(LABELPRINTERAPP_VERSION_MAJOR)
+        .arg(LABELPRINTERAPP_VERSION_MINOR)
+        .arg(LABELPRINTERAPP_VERSION_PATCH);
+}
+
 QSizeF estimatedElementSizeInches(const LabelTemplate& labelTemplate, const LabelElement& element)
 {
     const double dpi = std::max(1, labelTemplate.settings.dpi);
@@ -72,16 +81,20 @@ QSizeF estimatedElementSizeInches(const LabelTemplate& labelTemplate, const Labe
     {
         const int lines = element.wrap || element.multiLine ? std::max(1, element.maxLines) : 1;
         int fontHeight = element.fontHeightDots;
-        if (element.autoFit && !element.text.empty() && element.boxWidthInches > 0)
+        VariableContext context;
+        SampleData::fillMissingForElement(element, context);
+        const std::string value = VariableResolver::elementValue(element, context);
+        if (element.autoFit && !value.empty() && element.boxWidthInches > 0)
         {
-            const int estimatedWidth = static_cast<int>(element.text.size()) * element.fontWidthDots;
+            const int estimatedWidth = static_cast<int>(value.size()) * element.fontWidthDots;
             const int boxWidth = labelTemplate.settings.inchesToDots(element.boxWidthInches);
             if (estimatedWidth > boxWidth)
             {
                 fontHeight = std::max(8, element.fontHeightDots * boxWidth / std::max(1, estimatedWidth));
             }
         }
-        return QSizeF(std::max(0.05, element.boxWidthInches), std::max(0.05, (fontHeight * lines) / dpi));
+        const int selectionHeightDots = std::max(14, fontHeight) * lines + 12;
+        return QSizeF(std::max(0.05, element.boxWidthInches), std::max(0.05, selectionHeightDots / dpi));
     }
     if (element.type == LabelElementType::QrCode)
     {
@@ -182,7 +195,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 void MainWindow::buildUi()
 {
-    setWindowTitle("LabelPrinterApp");
+    setWindowTitle("LabelPrinterApp v" + appVersionText());
     setStyleSheet(
         "QMainWindow, QWidget { background: #ececec; color: #111; font-family: Segoe UI, Arial; font-size: 9pt; }"
         "QMenuBar { background: #f4f4f4; border-bottom: 1px solid #a7a7a7; }"
@@ -388,7 +401,10 @@ void MainWindow::buildMenus()
     help->addAction("User Guide", this, &MainWindow::showHelp);
     help->addAction("Check for Updates", this, &MainWindow::checkForUpdates);
     help->addAction("About", this, [this] {
-        QMessageBox::about(this, "About LabelPrinterApp", "LabelPrinterApp designs and prints Zebra ZPL labels.");
+        QMessageBox::about(
+            this,
+            "About LabelPrinterApp",
+            "LabelPrinterApp v" + appVersionText() + " designs and prints Zebra ZPL labels.");
     });
 }
 

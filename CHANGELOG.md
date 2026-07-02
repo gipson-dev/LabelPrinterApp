@@ -2,6 +2,13 @@
 
 ## 2026-07-02
 
+### 1.0.4
+
+- Bumped the project version to 1.0.4 for the preview/print and canvas alignment fix release.
+- Added the current app version to the main window title and About dialog, sourced from the generated CMake project version used by the updater.
+- Adjusted generated ZPL text sizing so printed text more closely matches the designer preview's visible font size.
+- Fixed single-element Align middle behavior so text elements align using the visible canvas selection box height instead of only the raw font height.
+
 ### 1.0.3
 
 - Bumped the project version to 1.0.3 for the OpenSSL runtime packaging fix release.

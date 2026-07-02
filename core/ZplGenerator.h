@@ -25,5 +25,5 @@ private:
     static char alignmentCode(TextAlignment alignment);
     static char mediaCode(MediaSensingMode mode);
     static int dots(const LabelTemplate& labelTemplate, double inches);
-    static int effectiveFontHeight(const LabelElement& element, const LabelTemplate& labelTemplate);
+    static int effectiveFontHeight(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value);
 };

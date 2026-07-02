@@ -1,6 +1,7 @@
 #include "core/ZplGenerator.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <sstream>
 
@@ -8,6 +9,13 @@
 
 namespace
 {
+constexpr double kZebraFontVisibleRatio = 0.72;
+
+int zebraFontCellDots(int visualDots)
+{
+    return std::max(8, static_cast<int>(std::round(visualDots / kZebraFontVisibleRatio)));
+}
+
 int alignedBarcodeX(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
 {
     int x = labelTemplate.settings.inchesToDots(element.xInches);
@@ -123,13 +131,15 @@ std::string ZplGenerator::textZpl(const LabelElement& element, const LabelTempla
     std::ostringstream zpl;
     int x = dots(labelTemplate, element.xInches);
     int boxWidth = dots(labelTemplate, element.boxWidthInches);
-    int fontHeight = effectiveFontHeight(element, labelTemplate);
+    int visualFontHeight = effectiveFontHeight(element, labelTemplate, value);
+    int fontHeight = zebraFontCellDots(visualFontHeight);
     int y = dots(labelTemplate, element.yInches);
     if (element.rotation == ElementRotation::Deg0)
     {
-        y += fontHeight / 4;
+        y += visualFontHeight / 4;
     }
-    int fontWidth = element.autoFit ? std::max(8, element.fontWidthDots * fontHeight / std::max(1, element.fontHeightDots)) : element.fontWidthDots;
+    int visualFontWidth = element.autoFit ? std::max(8, element.fontWidthDots * visualFontHeight / std::max(1, element.fontHeightDots)) : element.fontWidthDots;
+    int fontWidth = zebraFontCellDots(visualFontWidth);
     char font = element.fontName.empty() ? '0' : element.fontName[0];
 
     zpl << "^FO" << x << "," << y << "\n";
@@ -153,8 +163,8 @@ std::string ZplGenerator::textZpl(const LabelElement& element, const LabelTempla
 
     if (element.underline)
     {
-        int underlineWidth = element.wrap || element.multiLine ? boxWidth : std::max(20, static_cast<int>(value.size()) * fontWidth / 2);
-        zpl << "^FO" << x << "," << (y + fontHeight + 4) << "\n";
+        int underlineWidth = element.wrap || element.multiLine ? boxWidth : std::max(20, static_cast<int>(value.size()) * visualFontWidth / 2);
+        zpl << "^FO" << x << "," << (y + visualFontHeight + 4) << "\n";
         zpl << "^GB" << underlineWidth << ",2,2^FS\n";
     }
 
@@ -273,14 +283,14 @@ int ZplGenerator::dots(const LabelTemplate& labelTemplate, double inches)
     return labelTemplate.settings.inchesToDots(inches);
 }
 
-int ZplGenerator::effectiveFontHeight(const LabelElement& element, const LabelTemplate& labelTemplate)
+int ZplGenerator::effectiveFontHeight(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
 {
-    if (!element.autoFit || element.text.empty() || element.boxWidthInches <= 0)
+    if (!element.autoFit || value.empty() || element.boxWidthInches <= 0)
     {
         return element.fontHeightDots;
     }
 
-    int estimated = static_cast<int>(element.text.size()) * element.fontWidthDots;
+    int estimated = static_cast<int>(value.size()) * element.fontWidthDots;
     int boxWidth = labelTemplate.settings.inchesToDots(element.boxWidthInches);
     if (estimated <= boxWidth)
     {

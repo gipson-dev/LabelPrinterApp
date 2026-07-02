@@ -61,7 +61,7 @@ LabelPrinterApp/
 - `LabelElement` models text, Code 128, Code 39, QR, Line, and Box elements. It stores content, source mode, variable name, prefix/suffix, X/Y position, text formatting, shape dimensions, barcode settings, QR settings, `doNotPrint`, and `locked`.
 - `LabelTemplate` owns printer settings and the ordered element list. Element order is used as the preview and print layer order.
 - `VariableResolver` resolves `{Placeholders}`, date/time values, serial numbers, record indexes, and prefix/suffix formatting before preview/print.
-- `ZplGenerator` converts templates into ZPL using `^PW`, `^LL`, `^LH`, `^MN`, `^FW`, text, Code 128, Code 39, QR, and graphic box commands. Field data is escaped for unsafe ZPL characters, and normal text output applies the same visual-origin correction used by the designer preview.
+- `ZplGenerator` converts templates into ZPL using `^PW`, `^LL`, `^LH`, `^MN`, `^FW`, text, Code 128, Code 39, QR, and graphic box commands. Field data is escaped for unsafe ZPL characters, and normal text output applies sizing and visual-origin corrections so printed text more closely matches the designer preview.
 - `ZebraPrinter` enumerates installed Windows printers and sends raw ZPL using `OpenPrinterA`, `StartDocPrinterA`, `WritePrinter`, and `ClosePrinter`.
 - `TemplateStorage` saves and loads JSON templates with nlohmann/json, including the current lock and do-not-print element flags.
 - `CsvImporter` parses quoted CSV data and detects headers.
@@ -71,7 +71,7 @@ LabelPrinterApp/
 
 ## UI Classes
 
-- `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, raw print commands, the `AppUpdater`-backed self-update check (silent on startup, manual from `Help > Check for Updates`), and the `View > Print History` viewer.
+- `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, raw print commands, the generated app version shown in the window title/About dialog, the `AppUpdater`-backed self-update check (silent on startup, manual from `Help > Check for Updates`), and the `View > Print History` viewer.
 - `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, vertically centered text, barcode/QR/shape previews, selection handles, marquee multi-selection, cursor coordinates, drag-to-move positioning, group dragging, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. Barcode bounds use shared Zebra module-count sizing, and centered/right-aligned barcodes are positioned from the resolved print value so variable data stays aligned. Locked elements cannot be dragged or resized.
 - `ElementEditorWidget` is the right-side `Element Property Editor`. Its section buttons are true filtered pages:
   - `Text`: name, type, and element text
@@ -105,7 +105,7 @@ The Design tab uses a classic label-designer layout:
   - Bring forward and send backward for layer order
   - Lock and unlock selected elements
 
-Multiple elements can be selected by dragging a marquee on empty canvas space or Ctrl-clicking individual elements. Alignment commands operate on the selected group's bounds when more than one element is selected. For a single barcode, Align center/right sets a full-label alignment lane and generated ZPL offsets the barcode by the resolved printed value width.
+Multiple elements can be selected by dragging a marquee on empty canvas space or Ctrl-clicking individual elements. Alignment commands operate on the selected group's bounds when more than one element is selected. For a single text element, Align middle uses the visible selected box height. For a single barcode, Align center/right sets a full-label alignment lane and generated ZPL offsets the barcode by the resolved printed value width.
 
 ## Persistent App Settings
 
@@ -133,6 +133,7 @@ Persisted values include the window geometry/state, active tab, selected printer
 - Version 4: placeholders, prompt-at-print values, date/time tokens, serial numbers, prefix/suffix, and serial ranges.
 - Version 5: CSV and `.xlsx` import, header mapping, record preview, selected/all row printing, Number/Description field workflow, and placeholder replacement in text/barcode/QR fields.
 - `v1.0.0`: self-updating release delivery through the vendored `c-updater` library and `LabelPrinterAppLauncher.exe`.
+- `v1.0.4`: window-title version display plus preview/print text sizing and single-text Align middle corrections.
 
 ## Build In Visual Studio
 
