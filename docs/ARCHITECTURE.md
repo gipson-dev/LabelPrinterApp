@@ -134,6 +134,7 @@ Persisted values include the window geometry/state, active tab, selected printer
 - Version 5: CSV and `.xlsx` import, header mapping, record preview, selected/all row printing, Number/Description field workflow, and placeholder replacement in text/barcode/QR fields.
 - `v1.0.0`: self-updating release delivery through the vendored `c-updater` library and `LabelPrinterAppLauncher.exe`.
 - `v1.0.4`: window-title version display plus preview/print text sizing and single-text Align middle corrections.
+- `v1.0.5`: packaging hotfix for built dependency runtime DLLs such as `zlib-ng2.dll`.
 
 ## Build In Visual Studio
 
@@ -184,7 +185,7 @@ Create a distributable folder:
 .\scripts\package-release.ps1 -Config Release
 ```
 
-The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe` and `LabelPrinterAppLauncher.exe`. The script fails fast if either executable is missing from the build output. Close any running copy of `dist\LabelPrinterApp\LabelPrinterApp.exe` before packaging so Windows can replace Qt DLLs.
+The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe`, `LabelPrinterAppLauncher.exe`, Qt runtime files, OpenSSL runtime files, and built dependency runtime DLLs such as `zlib-ng2.dll`. The script fails fast if either executable is missing from the build output. Close any running copy of `dist\LabelPrinterApp\LabelPrinterApp.exe` before packaging so Windows can replace Qt DLLs.
 
 The package script also writes:
 

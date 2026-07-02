@@ -306,6 +306,48 @@ function Add-RequireAdministratorManifest {
     Write-Host "Embedded requireAdministrator manifest in $ExePath"
 }
 
+function Copy-BuiltDependencyRuntimeDlls {
+    $candidateDirectories = [System.Collections.Generic.List[string]]::new()
+
+    Add-DirectoryCandidate -Candidates $candidateDirectories -Path (Join-Path $BuildDir $Config)
+
+    foreach ($root in @(
+        (Join-Path $BuildDir "_deps"),
+        (Join-Path $BuildDir "c-updater")
+    )) {
+        if (!(Test-Path $root)) {
+            continue
+        }
+
+        Get-ChildItem -LiteralPath $root -Directory -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -eq $Config } |
+            ForEach-Object {
+                Add-DirectoryCandidate -Candidates $candidateDirectories -Path $_.FullName
+            }
+    }
+
+    $copied = [System.Collections.Generic.List[string]]::new()
+    foreach ($directory in $candidateDirectories) {
+        Get-ChildItem -LiteralPath $directory -Filter "*.dll" -File -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $destination = Join-Path $OutputDir $_.Name
+                if ((Test-Path $destination) -and
+                    ((Get-Item -LiteralPath $destination).Length -eq $_.Length)) {
+                    return
+                }
+
+                Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
+                if (!$copied.Contains($_.Name)) {
+                    $copied.Add($_.Name)
+                }
+            }
+    }
+
+    if ($copied.Count -gt 0) {
+        Write-Host "Copied build dependency runtime DLLs: $($copied -join ', ')"
+    }
+}
+
 & "$PSScriptRoot\build-and-test.ps1" -Config $Config -BuildDir $BuildDir
 
 $exePath = Join-Path $BuildDir "$Config\LabelPrinterApp.exe"
@@ -371,6 +413,7 @@ if ($windeployqt) {
     Write-Warning "windeployqt.exe was not found. Copy Qt runtime DLLs manually or add Qt bin to PATH."
 }
 
+Copy-BuiltDependencyRuntimeDlls
 Copy-OpenSslRuntimeDlls -ExePath (Join-Path $OutputDir "LabelPrinterApp.exe")
 
 $distRoot = Split-Path -Parent $OutputDir

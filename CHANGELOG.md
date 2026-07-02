@@ -2,6 +2,12 @@
 
 ## 2026-07-02
 
+### 1.0.5
+
+- Bumped the project version to 1.0.5 for the missing runtime DLL hotfix release.
+- Fixed release packaging so build-produced dependency DLLs, including `zlib-ng2.dll`, are copied into the app folder before the portable ZIP and setup EXE are created.
+- Fixed the post-update relaunch failure caused by `LabelPrinterApp.exe` starting without `zlib-ng2.dll` beside it.
+
 ### 1.0.4
 
 - Bumped the project version to 1.0.4 for the preview/print and canvas alignment fix release.

@@ -4,7 +4,7 @@
 
 Build a Windows desktop label-design and Zebra-printing application for custom text, number, barcode, QR, line, box, and batch labels. The application supports editable templates, Excel/CSV data import, print preview, Zebra ZPL output, printer settings, print history, developer-friendly local setup, and release packaging.
 
-The current application covers the requested Version 1 through Version 5 feature set and includes the classic desktop designer UI pass. `v1.0.4` is the current patch release line, and the app can check for and apply newer GitHub releases on its own. Clean-machine and physical-printer QA hardening from the beta phase continues in parallel; see [Known Remaining Work](#known-remaining-work) and [docs/KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+The current application covers the requested Version 1 through Version 5 feature set and includes the classic desktop designer UI pass. `v1.0.5` is the current patch release line, and the app can check for and apply newer GitHub releases on its own. Clean-machine and physical-printer QA hardening from the beta phase continues in parallel; see [Known Remaining Work](#known-remaining-work) and [docs/KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Release Status Overview
 
@@ -68,7 +68,7 @@ The current application covers the requested Version 1 through Version 5 feature
 - VS Code C/C++ IntelliSense include paths for fetched `nlohmann/json.hpp` in the local build folders.
 - Self-updating releases: a startup check plus `Help > Check for Updates` download and verify newer GitHub releases in the background and relaunch through `LabelPrinterAppLauncher.exe` to apply them, keeping `templates\` and `logs\` intact.
 - App version shown in the main window title and About dialog.
-- `v1.0.4` prepared as the current preview/print and canvas alignment fix release.
+- `v1.0.5` prepared as the current missing dependency runtime DLL hotfix release.
 - In-app Print History viewer from `View > Print History`, reading `logs\print_history.csv` into a refreshable, most-recent-first table with color-coded success/failure.
 
 ## Immediate Next Order
@@ -114,7 +114,7 @@ Goal: first stable release.
 
 Status: tagged and published as `v1.0.0`, including self-updating release delivery. Clean-machine install, physical printer calibration, and barcode/QR scan validation from the list below are still being hardened; see [Known Remaining Work](#known-remaining-work).
 
-Patch line: `v1.0.4` adds in-app version display plus preview/print text sizing and visible-box Align middle corrections.
+Patch line: `v1.0.4` adds in-app version display plus preview/print text sizing and visible-box Align middle corrections. `v1.0.5` fixes packaging for built dependency runtime DLLs such as `zlib-ng2.dll`.
 
 Must include:
 
