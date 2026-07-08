@@ -6,7 +6,7 @@ This file tracks beta-era risks and remaining work for LabelPrinterApp.
 
 - Clean-machine package testing is still required before a 1.0 release.
 - Physical printer calibration is still required on both 203 DPI and 300 DPI Zebra printers.
-- Preview-to-print matching was improved again in `v1.0.4`; `v1.0.5` fixes the missing `zlib-ng2.dll` package dependency. Final vertical and horizontal offset checks still need real media validation.
+- Preview-to-print matching was improved again in `v1.0.8` with shared dot-based layout, Zebra-width text preview scaling, printer DPI sync, canvas bounds clamping, and safer border insets. Final vertical/horizontal offset checks still need repeated real-media validation on each printer/stock combination.
 - Barcode and QR scan validation should be repeated on real printed labels before production use.
 - Print history can be viewed in-app from `View > Print History`, but it is read-only: exporting, clearing, and reprinting from history are still planned.
 - Image/logo elements are visible in the toolbox as future work and are not implemented yet.

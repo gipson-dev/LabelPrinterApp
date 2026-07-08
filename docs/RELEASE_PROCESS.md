@@ -30,12 +30,14 @@ Before tagging a release:
 .\scripts\package-release.ps1 -Config Release
 ```
 
+The package script bumps the patch version in `CMakeLists.txt` before building. If you are retrying the same package because a previous run hit a transient file lock, use `.\scripts\package-release.ps1 -Config Release -NoVersionBump`.
+
 4. Confirm `dist\LabelPrinterApp` and `dist\LabelPrinterApp_Portable.zip` include required dependency DLLs such as `zlib-ng2.dll`, plus matching `libssl*.dll` and `libcrypto*.dll` files beside `LabelPrinterApp.exe`.
 5. Open `dist\LabelPrinterApp\LabelPrinterApp.exe`.
 6. Run the manual checks in `docs\MANUAL_QA_CHECKLIST.md`, including the `Check for Updates` flow against the currently-latest published GitHub release.
 7. Review `docs\KNOWN_ISSUES.md` and update it with any new release-specific limitations.
 8. In VS Code, open `core\TemplateStorage.cpp` and confirm C/C++ IntelliSense resolves `nlohmann/json.hpp` after configure/build.
-9. Bump the project version in the root `CMakeLists.txt` (`project(LabelPrinterApp VERSION ...)`) to match the tag you are about to push, so the update checker can compare versions correctly.
+9. Confirm the automatic version bump in the root `CMakeLists.txt` (`project(LabelPrinterApp VERSION ...)`) matches the tag you are about to push, so the update checker can compare versions correctly.
 10. Confirm the packaged app title and About dialog show the same `v*` version you are about to tag.
 
 ## Publish A Beta Release
@@ -78,7 +80,10 @@ The current beta includes:
 - CSV and Excel import from the Data tab.
 - Selected/all imported record printing.
 - Canvas drag-to-move and anchor resizing.
-- Vertically centered text preview with corrected Zebra text-origin output.
+- Shared preview/ZPL layout for text, barcode, QR, line, and box elements.
+- Zebra-scaled text preview with explicit ZPL text line output for closer WYSIWYG printing.
+- Canvas drag/resize clamping to keep elements inside the label.
+- Safe border/box insets for labels that print close to the top or right edge.
 - Line and Box design elements with preview, resizing, template storage, and ZPL output.
 - Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help actions in the classic toolbar/menu.
 - Font sizes above 72 dots.

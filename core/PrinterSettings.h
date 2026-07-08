@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/LabelUnits.h"
+
 #include <string>
 
 enum class MediaSensingMode
@@ -36,5 +38,5 @@ struct PrinterSettings
     int marginLeftDots() const { return inchesToDots(marginLeftInches); }
     int marginTopDots() const { return inchesToDots(marginTopInches); }
     int gapDots() const { return inchesToDots(gapInches); }
-    int inchesToDots(double inches) const { return static_cast<int>(inches * dpi + 0.5); }
+    int inchesToDots(double inches) const { return LabelUnits::roundDots(LabelUnits::inchesToDots(inches, dpi)); }
 };

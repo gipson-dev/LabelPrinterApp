@@ -1,11 +1,18 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <cassert>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <string>
 
 #include "core/BarcodeMetrics.h"
 #include "core/CsvImporter.h"
+#include "core/LabelLayout.h"
 #include "core/LabelTemplate.h"
+#include "core/LabelUnits.h"
 #include "core/SampleData.h"
 #include "core/TemplateStorage.h"
 #include "core/VariableResolver.h"
@@ -13,6 +20,59 @@
 
 namespace
 {
+    bool nearlyEqual(double a, double b, double tolerance = 0.001)
+    {
+        return std::abs(a - b) <= tolerance;
+    }
+
+    int occurrenceCount(const std::string& haystack, const std::string& needle)
+    {
+        int count = 0;
+        std::size_t pos = 0;
+        while ((pos = haystack.find(needle, pos)) != std::string::npos)
+        {
+            ++count;
+            pos += needle.size();
+        }
+        return count;
+    }
+
+    LabelTemplate twoLineRegressionLabel()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+        label.settings.labelWidthInches = 2.25;
+        label.settings.labelHeightInches = 0.75;
+        label.settings.marginLeftInches = 0.0;
+        label.settings.marginTopInches = 0.0;
+
+        LabelElement top;
+        top.id = "text_align_top";
+        top.name = "Align Top";
+        top.type = LabelElementType::Text;
+        top.text = "Align Top";
+        top.xInches = 25.0 / 203.0;
+        top.yInches = 20.0 / 203.0;
+        top.boxWidthInches = 350.0 / 203.0;
+        top.fontHeightDots = 42;
+        top.fontWidthDots = 32;
+        label.elements.push_back(top);
+
+        LabelElement middle;
+        middle.id = "text_align_middle";
+        middle.name = "Align Middle";
+        middle.type = LabelElementType::Text;
+        middle.text = "Align Middle";
+        middle.xInches = 25.0 / 203.0;
+        middle.yInches = 80.0 / 203.0;
+        middle.boxWidthInches = 350.0 / 203.0;
+        middle.fontHeightDots = 42;
+        middle.fontWidthDots = 32;
+        label.elements.push_back(middle);
+
+        return label;
+    }
+
     void GeneratedZplIncludesSettingsAndVersionFiveElements()
     {
         LabelTemplate label = LabelTemplate::defaultTemplate();
@@ -86,7 +146,7 @@ namespace
         assert(zpl.find("^PR5") != std::string::npos);
         assert(zpl.find("^MNM") != std::string::npos);
         assert(zpl.find("^FWN") != std::string::npos);
-        assert(zpl.find("^FO14,15\n^A0N,39,33") != std::string::npos);
+        assert(zpl.find("^FO14,8\n^A0N,28,24") != std::string::npos);
         assert(zpl.find("^BCN,48,Y,N,N") != std::string::npos);
         assert(zpl.find("^B3N,N,35,N,N") != std::string::npos);
         assert(zpl.find("^BQN,2,3") != std::string::npos);
@@ -198,8 +258,344 @@ namespace
 
         const std::string zpl = ZplGenerator::generate(label);
 
-        assert(zpl.find("^FO32,39\n^A0N,86,64") != std::string::npos);
+        assert(zpl.find("^FO32,24\n^A0N,62,46") != std::string::npos);
         assert(zpl.find("^FDSample Text") != std::string::npos);
+    }
+
+    void ImportedRecordValuesAreSubstitutedIntoZpl()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.labelWidthInches = 2.25;
+        label.settings.labelHeightInches = 0.75;
+
+        LabelElement number;
+        number.type = LabelElementType::Text;
+        number.source = FieldSource::Variable;
+        number.text = "{Number}";
+        number.variableName = "Number";
+        number.xInches = 0.25;
+        number.yInches = 0.08;
+        number.boxWidthInches = 1.75;
+        number.fontHeightDots = 72;
+        number.fontWidthDots = 54;
+        number.alignment = TextAlignment::Center;
+        label.elements.push_back(number);
+
+        LabelElement description;
+        description.type = LabelElementType::Text;
+        description.source = FieldSource::Variable;
+        description.text = "{Description}";
+        description.variableName = "Description";
+        description.xInches = 0.1;
+        description.yInches = 0.48;
+        description.boxWidthInches = 2.05;
+        description.fontHeightDots = 26;
+        description.fontWidthDots = 20;
+        description.alignment = TextAlignment::Center;
+        label.elements.push_back(description);
+
+        VariableContext context;
+        context.values["Number"] = "164";
+        context.values["Description"] = "Basic Short -60/64";
+
+        const std::string zpl = ZplGenerator::generate(label, context);
+        assert(zpl.find("^FD164^FS") != std::string::npos);
+        assert(zpl.find("^FDBasic Short -60/64^FS") != std::string::npos);
+        assert(zpl.find("^FO51,16\n^A0N,72,54") != std::string::npos);
+        assert(zpl.find("^FO20,97\n^A0N,26,20") != std::string::npos);
+    }
+
+    void CoordinateConversionsAreStable()
+    {
+        assert(nearlyEqual(LabelUnits::inchesToDots(4.0, 203), 812.0));
+        assert(nearlyEqual(LabelUnits::dotsToInches(812.0, 203), 4.0));
+        assert(nearlyEqual(LabelUnits::mmToDots(25.4, 300), 300.0));
+        assert(nearlyEqual(LabelUnits::dotsToMm(300.0, 300), 25.4));
+    }
+
+    void LayoutUsesCanonicalDotBounds()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+        label.settings.labelWidthInches = 4.0;
+        label.settings.labelHeightInches = 2.0;
+
+        LabelElement text;
+        text.type = LabelElementType::Text;
+        text.text = "A";
+        text.xInches = 100.0 / 203.0;
+        text.yInches = 50.0 / 203.0;
+        text.boxWidthInches = 203.0 / 203.0;
+        text.fontHeightDots = 42;
+        text.fontWidthDots = 32;
+        label.elements.push_back(text);
+
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(label);
+        assert(nearlyEqual(layout.labelWidthDots, 812.0));
+        assert(nearlyEqual(layout.labelHeightDots, 406.0));
+        assert(layout.elements.size() == 1);
+        assert(nearlyEqual(layout.elements[0].contentBoundsDots.x, 100.0));
+        assert(nearlyEqual(layout.elements[0].contentBoundsDots.y, 50.0));
+        assert(nearlyEqual(layout.elements[0].contentBoundsDots.width, 203.0));
+        assert(nearlyEqual(layout.elements[0].contentBoundsDots.height, 42.0));
+    }
+
+    void ZplOutputUsesCanonicalCoordinates()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+
+        LabelElement text;
+        text.type = LabelElementType::Text;
+        text.text = "Dot Position";
+        text.xInches = 100.0 / 203.0;
+        text.yInches = 50.0 / 203.0;
+        text.boxWidthInches = 1.5;
+        text.fontHeightDots = 42;
+        text.fontWidthDots = 32;
+        label.elements.push_back(text);
+
+        const std::string zpl = ZplGenerator::generate(label);
+        assert(zpl.find("^FO100,50\n^A0N,42,32") != std::string::npos);
+    }
+
+    void SavedTemplatePreservesCanonicalGeometry()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+        LabelElement text;
+        text.type = LabelElementType::Text;
+        text.text = "Saved";
+        text.xInches = 100.0 / 203.0;
+        text.yInches = 50.0 / 203.0;
+        text.boxWidthInches = 203.0 / 203.0;
+        text.fontHeightDots = 42;
+        text.fontWidthDots = 32;
+        label.elements.push_back(text);
+
+        const std::filesystem::path path = std::filesystem::temp_directory_path() / "label_printer_geometry_roundtrip.json";
+        std::string error;
+        assert(TemplateStorage::save(label, path.string(), error));
+        const LabelTemplate loaded = TemplateStorage::load(path.string());
+        std::filesystem::remove(path);
+
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(loaded);
+        assert(layout.elements.size() == 1);
+        assert(nearlyEqual(layout.elements[0].contentBoundsDots.x, 100.0));
+        assert(nearlyEqual(layout.elements[0].contentBoundsDots.y, 50.0));
+        assert(nearlyEqual(layout.elements[0].contentBoundsDots.width, 203.0));
+    }
+
+    void TextPrintParityIndependentElementsKeepIndependentY()
+    {
+        const LabelTemplate label = twoLineRegressionLabel();
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(label);
+        assert(layout.textLayouts.size() == 2);
+        assert(nearlyEqual(layout.textLayouts[0].yDots, 20.0));
+        assert(nearlyEqual(layout.textLayouts[1].yDots, 80.0));
+        assert(!nearlyEqual(layout.textLayouts[0].yDots, layout.textLayouts[1].yDots));
+
+        const std::string zpl = ZplGenerator::generate(label);
+        assert(zpl.find("^PW457") != std::string::npos);
+        assert(zpl.find("^LL152") != std::string::npos);
+        assert(zpl.find("^LH0,0") != std::string::npos);
+        assert(zpl.find("^FWN") != std::string::npos);
+        assert(zpl.find("^FO25,20\n^A0N,42,32\n^FH\\^FDAlign Top^FS") != std::string::npos);
+        assert(zpl.find("^FO25,80\n^A0N,42,32\n^FH\\^FDAlign Middle^FS") != std::string::npos);
+        assert(occurrenceCount(zpl, "^FDAlign Top") == 1);
+        assert(occurrenceCount(zpl, "^FDAlign Middle") == 1);
+    }
+
+    void TextPrintParityCanvasZoomCannotAffectZpl()
+    {
+        const LabelTemplate label = twoLineRegressionLabel();
+        const std::string zplBeforeAnyViewProjection = ZplGenerator::generate(label);
+        const std::string zplAfterAnyViewProjection = ZplGenerator::generate(label);
+        assert(zplBeforeAnyViewProjection == zplAfterAnyViewProjection);
+    }
+
+    void TextPrintParityFontHeightAndWidthUseDots()
+    {
+        const LabelTemplate label = twoLineRegressionLabel();
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(label);
+        assert(layout.textLayouts.size() == 2);
+        for (const ResolvedTextLayout& text : layout.textLayouts)
+        {
+            assert(nearlyEqual(text.fontHeightDots, 42.0));
+            assert(nearlyEqual(text.fontWidthDots, 32.0));
+        }
+
+        const std::string zpl = ZplGenerator::generate(label);
+        assert(occurrenceCount(zpl, "^A0N,42,32") == 2);
+    }
+
+    void TextPrintParityZplUsesResolvedLayout()
+    {
+        const LabelTemplate label = twoLineRegressionLabel();
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(label);
+        const std::string zpl = ZplGenerator::generate(label);
+        for (const ResolvedTextLayout& text : layout.textLayouts)
+        {
+            const std::string expectedFo = "^FO" +
+                std::to_string(LabelUnits::roundDots(text.glyphOriginXDots)) + "," +
+                std::to_string(LabelUnits::roundDots(text.glyphOriginYDots));
+            assert(zpl.find(expectedFo) != std::string::npos);
+        }
+    }
+
+    void TextPrintParityDebugReportShowsPerElementZpl()
+    {
+        const LabelTemplate label = twoLineRegressionLabel();
+        const std::string report = ZplGenerator::generateDebugReport(label);
+        assert(report.find("Element: Align Top") != std::string::npos);
+        assert(report.find("Element: Align Middle") != std::string::npos);
+        assert(report.find("xDots=25") != std::string::npos);
+        assert(report.find("yDots=20") != std::string::npos);
+        assert(report.find("yDots=80") != std::string::npos);
+        assert(report.find("^FO25,20") != std::string::npos);
+        assert(report.find("^FO25,80") != std::string::npos);
+    }
+
+    void TextPrintParityUsesFoTopLeftTextOrigin()
+    {
+        const LabelTemplate label = twoLineRegressionLabel();
+        const std::string zpl = ZplGenerator::generate(label);
+        assert(occurrenceCount(zpl, "^FO") >= 2);
+        assert(zpl.find("^FT") == std::string::npos);
+        assert(zpl.find("^LS") == std::string::npos);
+        assert(zpl.find("^LT") == std::string::npos);
+        assert(zpl.find("^LH0,0") != std::string::npos);
+    }
+
+    void FullLabelBorderPrintsInsideSafeEdges()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+        label.settings.labelWidthInches = 2.25;
+        label.settings.labelHeightInches = 0.75;
+
+        LabelElement border;
+        border.type = LabelElementType::Box;
+        border.xInches = 0.0;
+        border.yInches = 0.0;
+        border.boxWidthInches = 2.25;
+        border.fontHeightDots = 152;
+        border.fontWidthDots = 3;
+        label.elements.push_back(border);
+
+        const std::string zpl = ZplGenerator::generate(label);
+        assert(zpl.find("^FO8,8\n^GB441,136,3^FS") != std::string::npos);
+        assert(zpl.find("^FO0,0\n^GB457,152,3^FS") == std::string::npos);
+    }
+
+    void RegressionTwoLargeTextElementsDoNotOverlapOnPrint()
+    {
+        const LabelTemplate label = twoLineRegressionLabel();
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(label);
+        assert(layout.textLayouts.size() == 2);
+        const double firstBottom = layout.textLayouts[0].yDots + layout.textLayouts[0].boxHeightDots;
+        assert(firstBottom < layout.textLayouts[1].yDots);
+
+        const std::string zpl = ZplGenerator::generate(label);
+        assert(zpl.find("^FO25,20") != std::string::npos);
+        assert(zpl.find("^FO25,80") != std::string::npos);
+        assert(zpl.find("Align Top\nAlign Middle") == std::string::npos);
+    }
+
+    void ImportedSingleLineTextDoesNotImplicitlyWrapInPreviewLayout()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+        label.settings.labelWidthInches = 2.25;
+        label.settings.labelHeightInches = 0.75;
+
+        LabelElement text;
+        text.type = LabelElementType::Text;
+        text.source = FieldSource::Variable;
+        text.variableName = "Status";
+        text.xInches = 0.05;
+        text.yInches = 0.1;
+        text.boxWidthInches = 1.35;
+        text.fontHeightDots = 64;
+        text.fontWidthDots = 48;
+        text.wrap = false;
+        text.multiLine = false;
+        text.maxLines = 2;
+        label.elements.push_back(text);
+
+        VariableContext context;
+        context.values["Status"] = "Show 5 Defective";
+
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(label, context);
+        assert(layout.textLayouts.size() == 1);
+        assert(layout.textLayouts[0].lines.size() == 1);
+        assert(layout.textLayouts[0].lines[0] == "Show 5 Defective");
+
+        const std::string zpl = ZplGenerator::generate(label, context);
+        assert(zpl.find("^FB") == std::string::npos);
+        assert(zpl.find("^FDShow 5 Defective^FS") != std::string::npos);
+        assert(zpl.find("^FDShow 5^FS") == std::string::npos);
+        assert(zpl.find("^FDDefective^FS") == std::string::npos);
+    }
+
+    void WrappedTextUsesSharedExplicitLineBreaksForPreviewAndZpl()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.dpi = 203;
+        label.settings.labelWidthInches = 2.25;
+        label.settings.labelHeightInches = 0.75;
+
+        LabelElement text;
+        text.type = LabelElementType::Text;
+        text.text = "Show 5 Defective";
+        text.xInches = 25.0 / 203.0;
+        text.yInches = 20.0 / 203.0;
+        text.boxWidthInches = 250.0 / 203.0;
+        text.fontHeightDots = 42;
+        text.fontWidthDots = 60;
+        text.wrap = true;
+        text.multiLine = true;
+        text.maxLines = 2;
+        text.alignment = TextAlignment::Center;
+        label.elements.push_back(text);
+
+        const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(label);
+        assert(layout.textLayouts.size() == 1);
+        assert(layout.textLayouts[0].lines.size() == 2);
+        assert(layout.textLayouts[0].lines[0] == "Show 5");
+        assert(layout.textLayouts[0].lines[1] == "Defective");
+
+        const std::string zpl = ZplGenerator::generate(label);
+        assert(zpl.find("^FO25,20\n^A0N,42,60\n^FB250,1,0,C,0\n^FH\\^FDShow 5^FS") != std::string::npos);
+        assert(zpl.find("^FO25,62\n^A0N,42,60\n^FB250,1,0,C,0\n^FH\\^FDDefective^FS") != std::string::npos);
+        assert(zpl.find("^FB250,2") == std::string::npos);
+        assert(zpl.find("^FDShow 5 Defective^FS") == std::string::npos);
+    }
+
+    void TextAlignmentUsesFullLabelLaneForImportedValues()
+    {
+        LabelTemplate label = LabelTemplate::defaultTemplate();
+        label.settings.labelWidthInches = 2.25;
+
+        LabelElement text;
+        text.type = LabelElementType::Text;
+        text.source = FieldSource::Variable;
+        text.text = "{Description}";
+        text.variableName = "Description";
+        text.xInches = 0.0;
+        text.yInches = 0.2;
+        text.boxWidthInches = 2.25;
+        text.fontHeightDots = 26;
+        text.fontWidthDots = 20;
+        text.alignment = TextAlignment::Center;
+        label.elements.push_back(text);
+
+        VariableContext context;
+        context.values["Description"] = "Basic Short -60/64";
+
+        const std::string zpl = ZplGenerator::generate(label, context);
+        assert(zpl.find("^FB457,1,0,C,0") != std::string::npos);
+        assert(zpl.find("^FDBasic Short -60/64^FS") != std::string::npos);
     }
 
     void SerialRangeGeneratesAscendingAndDescendingJobs()
@@ -290,6 +686,22 @@ int main()
     SampleDataLeavesDateTimeBuiltInsLive();
     CenteredCode128BarcodeUsesActualPrintedValueWidth();
     ManualTextPrintSizeMatchesDesignerIntent();
+    ImportedRecordValuesAreSubstitutedIntoZpl();
+    TextAlignmentUsesFullLabelLaneForImportedValues();
+    CoordinateConversionsAreStable();
+    LayoutUsesCanonicalDotBounds();
+    ZplOutputUsesCanonicalCoordinates();
+    SavedTemplatePreservesCanonicalGeometry();
+    TextPrintParityIndependentElementsKeepIndependentY();
+    TextPrintParityCanvasZoomCannotAffectZpl();
+    TextPrintParityFontHeightAndWidthUseDots();
+    TextPrintParityZplUsesResolvedLayout();
+    TextPrintParityDebugReportShowsPerElementZpl();
+    TextPrintParityUsesFoTopLeftTextOrigin();
+    FullLabelBorderPrintsInsideSafeEdges();
+    RegressionTwoLargeTextElementsDoNotOverlapOnPrint();
+    ImportedSingleLineTextDoesNotImplicitlyWrapInPreviewLayout();
+    WrappedTextUsesSharedExplicitLineBreaksForPreviewAndZpl();
     SerialRangeGeneratesAscendingAndDescendingJobs();
     CsvImporterDetectsHeadersAndMapsRows();
     TemplateStorageRoundTripsVersionFiveTemplate();

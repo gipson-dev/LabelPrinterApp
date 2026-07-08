@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-07-08
+
+### 1.0.8
+
+- Bumped the project version to 1.0.8 for the preview/print WYSIWYG and canvas bounds fix release.
+- Added a shared label layout engine used by both the designer preview and ZPL generation so text, barcode, QR, line, and box element bounds resolve from the same dot-based geometry.
+- Reworked normal text preview drawing to scale visible glyph width and height from the same Zebra font height/width values emitted in ZPL, improving preview-to-print sizing and alignment.
+- Updated generated ZPL text output to use explicit resolved line positions and Zebra font dimensions, reducing printer-side wrapping and vertical offset surprises for imported Excel/CSV data.
+- Added printer DPI detection from the selected Windows printer and sync it into label settings before printing when available.
+- Kept dragged and resized elements inside the label canvas, including group dragging and property-editor changes.
+- Added safe printable insets for full-label borders/boxes so outline elements are not cut off at the top or right edge on Zebra media.
+- Fixed imported record preview selection so the canvas and generated ZPL follow the active Excel/CSV row.
+- Updated release packaging so each package build bumps the patch version automatically, with `-NoVersionBump` available for same-version retries.
+
 ## 2026-07-02
 
 ### 1.0.5

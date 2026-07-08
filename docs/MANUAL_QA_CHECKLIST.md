@@ -43,8 +43,10 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Double-click the text element, edit it in place on the canvas, press Enter, and confirm the Element Property Editor updates.
 - [ ] Double-click the text element again, type a temporary value, press Escape, and confirm the previous text remains.
 - [ ] Select the text element and drag side/corner anchors to resize it.
-- [ ] Confirm the text stays vertically centered inside the selected text box in the preview.
+- [ ] Confirm the preview text size and placement closely match the printed Zebra text for the same box.
 - [ ] Increase the text font size above 72 dots and confirm the text box width grows when needed.
+- [ ] Drag the text element against each canvas edge and confirm it cannot be dragged outside the label.
+- [ ] Resize the text element against each canvas edge and confirm it remains inside the label.
 - [ ] Add a Date/Time field and confirm the preview shows the current date and time instead of placeholder text.
 - [ ] Print the Date/Time field and confirm it updates to the current date and time without prompting.
 - [ ] Add a Code 128 barcode.
@@ -57,6 +59,7 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Select the QR code and drag side/corner anchors to resize it.
 - [ ] Add a Line and confirm it appears in preview/ZPL.
 - [ ] Add a Box and confirm it appears in preview/ZPL.
+- [ ] Resize a Box to the full label edge, print one label, and confirm the border is inset enough that the top and right edges are not cut off.
 - [ ] Use Copy, Paste, Cut, Undo, and Redo from the toolbar/menu.
 - [ ] Use Zoom In, Zoom Out, and Fit.
 - [ ] Click Help and confirm the user guide opens or a fallback message appears.
@@ -96,7 +99,7 @@ Use this checklist before tagging or publishing a beta/release build.
 - [ ] Confirm ZPL opens and uses the selected template and entered QA values.
 - [ ] Click `Print Test Label`.
 - [ ] Confirm one test label prints.
-- [ ] Confirm printed text placement is close to the canvas preview and not pinned to the top or bottom of the selected text box.
+- [ ] Confirm printed text placement and size are close to the canvas preview and not pinned to the top or bottom of the selected text box.
 - [ ] Confirm `logs\print_history.csv` is created or updated.
 - [ ] Confirm print history includes success/failure, printer, template, mode, rows, and copies.
 - [ ] Open `View > Print History` and confirm the table matches `logs\print_history.csv`, shows the most recent job first, and color-codes success/failure.

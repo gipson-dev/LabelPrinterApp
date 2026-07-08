@@ -1,10 +1,40 @@
 param(
     [string]$Config = "Release",
     [string]$BuildDir = "build",
-    [string]$OutputDir = "dist\LabelPrinterApp"
+    [string]$OutputDir = "dist\LabelPrinterApp",
+    [switch]$NoVersionBump
 )
 
 $ErrorActionPreference = "Stop"
+
+function Update-ProjectPatchVersion {
+    if ($NoVersionBump) {
+        Write-Host "Skipping project version bump."
+        return $null
+    }
+
+    $projectPath = Join-Path (Get-Location) "CMakeLists.txt"
+    if (!(Test-Path $projectPath)) {
+        throw "CMakeLists.txt was not found. Run package-release.ps1 from the repository root."
+    }
+
+    $content = [IO.File]::ReadAllText($projectPath)
+    $pattern = 'project\(LabelPrinterApp\s+VERSION\s+(\d+)\.(\d+)\.(\d+)\s+LANGUAGES\s+CXX\)'
+    $match = [regex]::Match($content, $pattern)
+    if (!$match.Success) {
+        throw "Could not find project(LabelPrinterApp VERSION x.y.z LANGUAGES CXX) in CMakeLists.txt."
+    }
+
+    $major = [int]$match.Groups[1].Value
+    $minor = [int]$match.Groups[2].Value
+    $patch = [int]$match.Groups[3].Value + 1
+    $newVersion = "$major.$minor.$patch"
+    $replacement = "project(LabelPrinterApp VERSION $newVersion LANGUAGES CXX)"
+    $updated = [regex]::Replace($content, $pattern, $replacement, 1)
+    [IO.File]::WriteAllText($projectPath, $updated, [Text.UTF8Encoding]::new($false))
+    Write-Host "Bumped project version to $newVersion"
+    return $newVersion
+}
 
 function Get-CMakeCacheValue {
     param(
@@ -347,6 +377,8 @@ function Copy-BuiltDependencyRuntimeDlls {
         Write-Host "Copied build dependency runtime DLLs: $($copied -join ', ')"
     }
 }
+
+$packagedVersion = Update-ProjectPatchVersion
 
 & "$PSScriptRoot\build-and-test.ps1" -Config $Config -BuildDir $BuildDir
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(LabelPrinterApp VERSION 1.0.5 LANGUAGES CXX)
+project(LabelPrinterApp VERSION 1.0.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,6 +25,7 @@ if (NOT TARGET nlohmann_json::nlohmann_json)
 endif()
 
 set(CORE_SOURCES
+    core/LabelLayout.cpp
     core/ZplGenerator.cpp
     core/ZebraPrinter.cpp
     core/TemplateStorage.cpp

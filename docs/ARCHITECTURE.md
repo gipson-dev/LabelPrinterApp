@@ -12,6 +12,9 @@ LabelPrinterApp/
 |   |-- PrinterSettings.h
 |   |-- LabelElement.h
 |   |-- LabelTemplate.h
+|   |-- LabelGeometry.h
+|   |-- LabelLayout.h/.cpp
+|   |-- LabelUnits.h
 |   |-- ZplGenerator.h/.cpp
 |   |-- ZebraPrinter.h/.cpp
 |   |-- TemplateStorage.h/.cpp
@@ -25,6 +28,7 @@ LabelPrinterApp/
 |-- ui/
 |   |-- MainWindow.h/.cpp
 |   |-- PreviewWidget.h/.cpp
+|   |-- LabelCoordinateMapper.h
 |   |-- ElementEditorWidget.h/.cpp
 |   |-- ExcelTableModel.h/.cpp
 |   `-- ExcelRecordsWidget.h/.cpp
@@ -60,9 +64,10 @@ LabelPrinterApp/
 - `PrinterSettings` stores printer name, DPI, label size, margins, gap, media sensing mode, orientation, darkness, speed, and copies.
 - `LabelElement` models text, Code 128, Code 39, QR, Line, and Box elements. It stores content, source mode, variable name, prefix/suffix, X/Y position, text formatting, shape dimensions, barcode settings, QR settings, `doNotPrint`, and `locked`.
 - `LabelTemplate` owns printer settings and the ordered element list. Element order is used as the preview and print layer order.
+- `LabelUnits`, `LabelGeometry`, and `LabelLayoutEngine` provide shared dot/inch conversion, resolved element bounds, text line layout, barcode sizing, QR sizing, and shape geometry used by both preview and print output.
 - `VariableResolver` resolves `{Placeholders}`, date/time values, serial numbers, record indexes, and prefix/suffix formatting before preview/print.
-- `ZplGenerator` converts templates into ZPL using `^PW`, `^LL`, `^LH`, `^MN`, `^FW`, text, Code 128, Code 39, QR, and graphic box commands. Field data is escaped for unsafe ZPL characters, and normal text output applies sizing and visual-origin corrections so printed text more closely matches the designer preview.
-- `ZebraPrinter` enumerates installed Windows printers and sends raw ZPL using `OpenPrinterA`, `StartDocPrinterA`, `WritePrinter`, and `ClosePrinter`.
+- `ZplGenerator` converts resolved label layout into ZPL using `^PW`, `^LL`, `^LH`, `^MN`, `^FW`, text, Code 128, Code 39, QR, and graphic box commands. Field data is escaped for unsafe ZPL characters, normal text emits explicit line positions and Zebra font dimensions, and full-label borders are inset from unsafe media edges.
+- `ZebraPrinter` enumerates installed Windows printers, detects printer DPI through the Windows device context when available, and sends raw ZPL using `OpenPrinterA`, `StartDocPrinterA`, `WritePrinter`, and `ClosePrinter`.
 - `TemplateStorage` saves and loads JSON templates with nlohmann/json, including the current lock and do-not-print element flags.
 - `CsvImporter` parses quoted CSV data and detects headers.
 - `ExcelImporter`, `ExcelRecordSet`, `ExcelTableModel`, and `ExcelRecordsWidget` provide the editable `.xlsx`/CSV database workflow through QXlsx.
@@ -71,8 +76,8 @@ LabelPrinterApp/
 
 ## UI Classes
 
-- `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, raw print commands, the generated app version shown in the window title/About dialog, the `AppUpdater`-backed self-update check (silent on startup, manual from `Help > Check for Updates`), and the `View > Print History` viewer.
-- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, vertically centered text, barcode/QR/shape previews, selection handles, marquee multi-selection, cursor coordinates, drag-to-move positioning, group dragging, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. Barcode bounds use shared Zebra module-count sizing, and centered/right-aligned barcodes are positioned from the resolved print value so variable data stays aligned. Locked elements cannot be dragged or resized.
+- `MainWindow` wires menus, toolbars, tab pages, template actions, printer settings, stock presets, persistent app settings, database printing, raw print commands, active imported-record preview, selected-printer DPI sync, the generated app version shown in the window title/About dialog, the `AppUpdater`-backed self-update check (silent on startup, manual from `Help > Check for Updates`), and the `View > Print History` viewer.
+- `PreviewWidget` paints the classic designer canvas with rulers, optional grid, label boundary, printable margin, Zebra-scaled text, barcode/QR/shape previews, selection handles, marquee multi-selection, cursor coordinates, drag-to-move positioning, group dragging, side/corner resize handles, and optional 0.25 inch snap-to-grid movement. It uses `LabelCoordinateMapper` and `LabelLayoutEngine` so preview selection bounds and drawn content map from the same resolved dot geometry used for ZPL. Dragging and resizing are clamped to the label canvas. Locked elements cannot be dragged or resized.
 - `ElementEditorWidget` is the right-side `Element Property Editor`. Its section buttons are true filtered pages:
   - `Text`: name, type, and element text
   - `Formatting`: font size, width, bold, italic, underline, wrap, auto-fit, max lines, and alignment
@@ -97,7 +102,7 @@ It logs successful and failed print sends, including missing-printer failures. `
 The Design tab uses a classic label-designer layout:
 
 - Left readable toolbox: Canvas Template selector, Select, Text, Number, Description, Barcode, QR Code, Date/Time, Serial #, Line, Box, and Image.
-- Center preview canvas with rulers, optional grid, printable margin, vertically centered text, shape rendering, and selection handles.
+- Center preview canvas with rulers, optional grid, printable margin, Zebra-scaled text, shape rendering, and selection handles.
 - Right `Element Property Editor` with filtered property pages.
 - Bottom layout toolbar:
   - Align left, center, right, top, middle, and bottom
@@ -105,7 +110,7 @@ The Design tab uses a classic label-designer layout:
   - Bring forward and send backward for layer order
   - Lock and unlock selected elements
 
-Multiple elements can be selected by dragging a marquee on empty canvas space or Ctrl-clicking individual elements. Alignment commands operate on the selected group's bounds when more than one element is selected. For a single text element, Align middle uses the visible selected box height. For a single barcode, Align center/right sets a full-label alignment lane and generated ZPL offsets the barcode by the resolved printed value width.
+Multiple elements can be selected by dragging a marquee on empty canvas space or Ctrl-clicking individual elements. Alignment commands operate on the selected group's bounds when more than one element is selected. For a single text element, Align middle uses the visible selected box height. For a single barcode, Align center/right sets a full-label alignment lane and generated ZPL offsets the barcode by the resolved printed value width. Drag and resize operations clamp element bounds to the label canvas before the template is updated.
 
 ## Persistent App Settings
 
@@ -135,6 +140,7 @@ Persisted values include the window geometry/state, active tab, selected printer
 - `v1.0.0`: self-updating release delivery through the vendored `c-updater` library and `LabelPrinterAppLauncher.exe`.
 - `v1.0.4`: window-title version display plus preview/print text sizing and single-text Align middle corrections.
 - `v1.0.5`: packaging hotfix for built dependency runtime DLLs such as `zlib-ng2.dll`.
+- `v1.0.8`: shared layout engine for preview/ZPL, Zebra-scaled preview text, printer DPI sync, imported-record preview fixes, canvas bounds clamping, safe border insets, and automatic package version bumps.
 
 ## Build In Visual Studio
 
@@ -185,7 +191,7 @@ Create a distributable folder:
 .\scripts\package-release.ps1 -Config Release
 ```
 
-The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe`, `LabelPrinterAppLauncher.exe`, Qt runtime files, OpenSSL runtime files, and built dependency runtime DLLs such as `zlib-ng2.dll`. The script fails fast if either executable is missing from the build output. Close any running copy of `dist\LabelPrinterApp\LabelPrinterApp.exe` before packaging so Windows can replace Qt DLLs.
+The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe`, `LabelPrinterAppLauncher.exe`, Qt runtime files, OpenSSL runtime files, and built dependency runtime DLLs such as `zlib-ng2.dll`. The script bumps the patch version in `CMakeLists.txt` before building unless `-NoVersionBump` is supplied. It fails fast if either executable is missing from the build output. Close any running copy of `dist\LabelPrinterApp\LabelPrinterApp.exe` before packaging so Windows can replace Qt DLLs.
 
 The package script also writes:
 

@@ -3,8 +3,10 @@
 #include <QWidget>
 #include <QList>
 
+#include "core/LabelLayout.h"
 #include "core/LabelTemplate.h"
 #include "core/VariableResolver.h"
+#include "ui/LabelCoordinateMapper.h"
 
 class QLineEdit;
 class QResizeEvent;
@@ -52,6 +54,8 @@ private:
     int hitTest(const QPointF& point) const;
     int resizeHandleAt(const QPointF& point, int elementIndex) const;
     QRectF elementRectInches(const LabelElement& element, const QRectF& label) const;
+    QRectF resolvedElementRectInches(const LabelElement& element) const;
+    QRectF clampRectToCanvas(const QRectF& rect) const;
     void applyResize(const QPointF& labelPoint);
     void beginInlineTextEdit(int elementIndex);
     void commitInlineTextEdit();
@@ -62,6 +66,9 @@ private:
     void drawBarcodeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
     void drawQrElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
     void drawShapeElement(QPainter& painter, const LabelElement& element, const QRectF& label, bool selected) const;
+    LabelCoordinateMapper coordinateMapper(const QRectF& label) const;
+    ResolvedLabelElement resolvedElement(const LabelElement& element) const;
+    int elementIndex(const LabelElement& element) const;
 
     LabelTemplate template_;
     VariableContext variables_;

@@ -40,7 +40,7 @@ LabelPrinterApp now uses a classic LabelDirect/ZebraDesigner-style desktop layou
 - `QTabWidget`: workflow pages for Design, Elements, Data, Templates, Print, and Settings.
 - `QSplitter`: movable left toolbox, center designer, and right property editor sections.
 - `QFrame`: classic framed left toolbox and right property panel.
-- `PreviewWidget`: custom painter for rulers, canvas, optional grid, label outline, printable margin, vertically centered text, barcode/QR/shape elements, movement, and side/corner resize handles.
+- `PreviewWidget`: custom painter for rulers, canvas, optional grid, label outline, printable margin, Zebra-scaled text, barcode/QR/shape elements, movement, canvas bounds clamping, and side/corner resize handles.
 - `ElementEditorWidget`: filtered property pages for Text, Formatting, Position, Data, Barcode, and Print.
 - `ExcelRecordsWidget`: editable records table for CSV and `.xlsx` database printing.
 
@@ -78,7 +78,7 @@ The bottom-right `Quick Print` button sends the current label to the selected pr
 - Drag unlocked elements to move them.
 - Drag selected side/corner anchors to resize elements. Text resize adjusts box width and font height, barcode resize adjusts width/height, and QR resize adjusts magnification.
 - Add Line and Box elements from the toolbox or toolbar for simple dividers and outlines; they render in the preview and print through ZPL graphic boxes.
-- Text is vertically centered inside its selection box so the designer preview better matches the printed label.
+- Text is drawn from the shared label layout path and scaled to the Zebra font width/height used for ZPL so the designer preview better matches the printed label.
 - Use the `Grid` toolbar button to show or hide the design grid.
 - Use the `Snap` toolbar button to snap dragged elements to the 0.25 inch design grid.
 - Locked elements remain selectable but do not drag.

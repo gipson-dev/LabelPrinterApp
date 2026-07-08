@@ -61,6 +61,8 @@ private:
     void refreshTemplateLibrary();
     void refreshSettingsControls();
     void refreshPreview();
+    void applyDpiToTemplate(int newDpi);
+    void syncDpiFromSelectedPrinter(bool allowStatusMessage = true);
     void loadDefaultTemplate();
     void newTemplate();
     void addElement(LabelElementType type);
@@ -149,6 +151,7 @@ private:
     QSpinBox* serialStartSpin_ = nullptr;
     QSpinBox* serialEndSpin_ = nullptr;
     ExcelRecordsWidget* excelRecords_ = nullptr;
+    int currentPreviewRow_ = 0;
     QAction* gridAction_ = nullptr;
     QAction* snapAction_ = nullptr;
     QLabel* statusPositionLabel_ = nullptr;

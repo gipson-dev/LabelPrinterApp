@@ -6,32 +6,10 @@
 #include <sstream>
 
 #include "core/BarcodeMetrics.h"
+#include "core/LabelUnits.h"
 
 namespace
 {
-constexpr double kZebraFontVisibleRatio = 0.72;
-
-int zebraFontCellDots(int visualDots)
-{
-    return std::max(8, static_cast<int>(std::round(visualDots / kZebraFontVisibleRatio)));
-}
-
-int alignedBarcodeX(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
-{
-    int x = labelTemplate.settings.inchesToDots(element.xInches);
-    const int boxWidth = labelTemplate.settings.inchesToDots(element.boxWidthInches);
-    const int barcodeWidth = BarcodeMetrics::barcodeWidthDots(element, value);
-    if (element.alignment == TextAlignment::Center && boxWidth > barcodeWidth)
-    {
-        x += (boxWidth - barcodeWidth) / 2;
-    }
-    else if (element.alignment == TextAlignment::Right && boxWidth > barcodeWidth)
-    {
-        x += boxWidth - barcodeWidth;
-    }
-    return x;
-}
-
 std::string code128FieldData(const std::string& escapedValue)
 {
     std::string data = ">:";
@@ -47,6 +25,16 @@ std::string code128FieldData(const std::string& escapedValue)
         }
     }
     return data;
+}
+
+int roundDot(double value)
+{
+    return LabelUnits::roundDots(value);
+}
+
+int printableEdgeInsetDots(int dpi)
+{
+    return std::max(4, LabelUnits::roundDots(LabelUnits::inchesToDots(0.04, dpi)));
 }
 }
 
@@ -66,16 +54,63 @@ std::string ZplGenerator::generate(const LabelTemplate& labelTemplate, const Var
     zpl << "^MD" << settings.darkness << "\n";
     zpl << "^PR" << settings.speedIps << "\n";
 
-    for (const LabelElement& element : labelTemplate.elements)
+    const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(labelTemplate, context);
+    for (const ResolvedLabelElement& element : layout.elements)
     {
-        if (!element.doNotPrint)
+        if (!element.element.doNotPrint)
         {
-            zpl << elementZpl(element, labelTemplate, context);
+            zpl << elementZpl(element, labelTemplate);
         }
     }
 
     zpl << "^XZ\n";
     return zpl.str();
+}
+
+std::string ZplGenerator::generateDebugReport(const LabelTemplate& labelTemplate, const VariableContext& context)
+{
+    const PrinterSettings& settings = labelTemplate.settings;
+    const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(labelTemplate, context);
+
+    std::ostringstream report;
+    report << "Label\n";
+    report << "dpi=" << layout.dpi << "\n";
+    report << "widthDots=" << roundDot(layout.labelWidthDots) << "\n";
+    report << "heightDots=" << roundDot(layout.labelHeightDots) << "\n";
+    report << "ZPL globals: ^PW" << settings.labelWidthDots()
+           << " ^LL" << settings.labelHeightDots()
+           << " ^LH" << settings.marginLeftDots() << "," << settings.marginTopDots()
+           << " ^FWN\n\n";
+
+    for (const ResolvedLabelElement& resolved : layout.elements)
+    {
+        if (resolved.element.type != LabelElementType::Text)
+        {
+            continue;
+        }
+
+        report << "Element: " << (resolved.element.name.empty() ? resolved.element.id : resolved.element.name) << "\n";
+        report << "id: " << resolved.element.id << "\n";
+        report << "Document:\n";
+        report << "xDots=" << roundDot(resolved.contentBoundsDots.x) << "\n";
+        report << "yDots=" << roundDot(resolved.contentBoundsDots.y) << "\n";
+        report << "widthDots=" << roundDot(resolved.contentBoundsDots.width) << "\n";
+        report << "heightDots=" << roundDot(resolved.contentBoundsDots.height) << "\n";
+        report << "Font:\n";
+        report << "heightDots=" << resolved.fontHeightDots << "\n";
+        report << "widthDots=" << resolved.fontWidthDots << "\n";
+        report << "Lines:\n";
+        for (std::size_t i = 0; i < resolved.textLines.size(); ++i)
+        {
+            report << i << ": " << resolved.textLines[i] << "\n";
+        }
+        report << "Generated ZPL:\n";
+        report << textZpl(resolved) << "\n";
+    }
+
+    report << "Full ZPL:\n";
+    report << generate(labelTemplate, context);
+    return report.str();
 }
 
 std::vector<std::string> ZplGenerator::generateSerialRange(const LabelTemplate& labelTemplate, int start, int end, int step, const VariableContext& baseContext)
@@ -108,74 +143,75 @@ std::vector<std::string> ZplGenerator::generateSerialRange(const LabelTemplate& 
     return jobs;
 }
 
-std::string ZplGenerator::elementZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const VariableContext& context)
+std::string ZplGenerator::elementZpl(const ResolvedLabelElement& resolved, const LabelTemplate& labelTemplate)
 {
-    std::string value = VariableResolver::elementValue(element, context);
-    switch (element.type)
+    switch (resolved.element.type)
     {
     case LabelElementType::Code128Barcode:
     case LabelElementType::Code39Barcode:
-        return barcodeZpl(element, labelTemplate, value);
+        return barcodeZpl(resolved);
     case LabelElementType::QrCode:
-        return qrZpl(element, labelTemplate, value);
+        return qrZpl(resolved);
     case LabelElementType::Line:
     case LabelElementType::Box:
-        return shapeZpl(element, labelTemplate);
+        return shapeZpl(resolved, labelTemplate);
     default:
-        return textZpl(element, labelTemplate, value);
+        return textZpl(resolved);
     }
 }
 
-std::string ZplGenerator::textZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
+std::string ZplGenerator::textZpl(const ResolvedLabelElement& resolved)
 {
+    const LabelElement& element = resolved.element;
     std::ostringstream zpl;
-    int x = dots(labelTemplate, element.xInches);
-    int boxWidth = dots(labelTemplate, element.boxWidthInches);
-    int visualFontHeight = effectiveFontHeight(element, labelTemplate, value);
-    int fontHeight = zebraFontCellDots(visualFontHeight);
-    int y = dots(labelTemplate, element.yInches);
-    if (element.rotation == ElementRotation::Deg0)
-    {
-        y += visualFontHeight / 4;
-    }
-    int visualFontWidth = element.autoFit ? std::max(8, element.fontWidthDots * visualFontHeight / std::max(1, element.fontHeightDots)) : element.fontWidthDots;
-    int fontWidth = zebraFontCellDots(visualFontWidth);
+    const int x = roundDot(resolved.contentBoundsDots.x);
+    const int y = roundDot(resolved.contentBoundsDots.y);
+    const int boxWidth = std::max(1, roundDot(resolved.contentBoundsDots.width));
+    const int visualFontHeight = std::max(8, resolved.fontHeightDots);
+    const int visualFontWidth = std::max(8, resolved.fontWidthDots);
     char font = element.fontName.empty() ? '0' : element.fontName[0];
+    const std::vector<std::string> lines = resolved.textLines.empty()
+        ? std::vector<std::string>{resolved.value}
+        : resolved.textLines;
+    const bool useFieldBlock = element.wrap || element.multiLine || element.alignment != TextAlignment::Left;
 
-    zpl << "^FO" << x << "," << y << "\n";
-    zpl << "^A" << font << orientationCode(element.rotation) << "," << fontHeight << "," << fontWidth << "\n";
-    if (element.wrap || element.multiLine || element.alignment != TextAlignment::Left)
+    auto appendLine = [&](int lineX, int lineY, const std::string& lineValue, int boldOffset)
     {
-        zpl << "^FB" << boxWidth << "," << element.maxLines << ",0," << alignmentCode(element.alignment) << ",0\n";
-    }
-    zpl << "^FH\\^FD" << escapeFieldData(value) << "^FS\n";
-
-    if (element.bold)
-    {
-        zpl << "^FO" << (x + 2) << "," << y << "\n";
-        zpl << "^A" << font << orientationCode(element.rotation) << "," << fontHeight << "," << fontWidth << "\n";
-        if (element.wrap || element.multiLine || element.alignment != TextAlignment::Left)
+        zpl << "^FO" << (lineX + boldOffset) << "," << lineY << "\n";
+        zpl << "^A" << font << orientationCode(element.rotation) << "," << visualFontHeight << "," << visualFontWidth << "\n";
+        if (useFieldBlock)
         {
-            zpl << "^FB" << boxWidth << "," << element.maxLines << ",0," << alignmentCode(element.alignment) << ",0\n";
+            zpl << "^FB" << boxWidth << ",1,0," << alignmentCode(element.alignment) << ",0\n";
         }
-        zpl << "^FH\\^FD" << escapeFieldData(value) << "^FS\n";
+        zpl << "^FH\\^FD" << escapeFieldData(lineValue) << "^FS\n";
+    };
+
+    for (std::size_t i = 0; i < lines.size(); ++i)
+    {
+        const int lineY = y + static_cast<int>(i) * visualFontHeight;
+        appendLine(x, lineY, lines[i], 0);
+        if (element.bold)
+        {
+            appendLine(x, lineY, lines[i], 2);
+        }
     }
 
     if (element.underline)
     {
-        int underlineWidth = element.wrap || element.multiLine ? boxWidth : std::max(20, static_cast<int>(value.size()) * visualFontWidth / 2);
-        zpl << "^FO" << x << "," << (y + visualFontHeight + 4) << "\n";
+        int underlineWidth = element.wrap || element.multiLine ? boxWidth : std::max(20, static_cast<int>(resolved.value.size()) * visualFontWidth / 2);
+        zpl << "^FO" << x << "," << (y + static_cast<int>(lines.size()) * visualFontHeight + 4) << "\n";
         zpl << "^GB" << underlineWidth << ",2,2^FS\n";
     }
 
     return zpl.str();
 }
 
-std::string ZplGenerator::barcodeZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
+std::string ZplGenerator::barcodeZpl(const ResolvedLabelElement& resolved)
 {
+    const LabelElement& element = resolved.element;
     std::ostringstream zpl;
-    int x = alignedBarcodeX(element, labelTemplate, value);
-    int y = dots(labelTemplate, element.yInches);
+    const int x = roundDot(resolved.contentBoundsDots.x);
+    const int y = roundDot(resolved.contentBoundsDots.y);
     zpl << "^FO" << x << "," << y << "\n";
     zpl << "^BY" << element.barcodeModuleWidth << "\n";
     if (element.type == LabelElementType::Code39Barcode)
@@ -188,34 +224,49 @@ std::string ZplGenerator::barcodeZpl(const LabelElement& element, const LabelTem
         zpl << "^BC" << orientationCode(element.rotation) << "," << element.barcodeHeightDots << ","
             << (element.humanReadable ? "Y" : "N") << ",N,N\n";
     }
-    const std::string escapedValue = escapeFieldData(value);
+    const std::string escapedValue = escapeFieldData(resolved.value);
     zpl << "^FH\\^FD" << (element.type == LabelElementType::Code128Barcode ? code128FieldData(escapedValue) : escapedValue) << "^FS\n";
     return zpl.str();
 }
 
-std::string ZplGenerator::qrZpl(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
+std::string ZplGenerator::qrZpl(const ResolvedLabelElement& resolved)
 {
+    const LabelElement& element = resolved.element;
     std::ostringstream zpl;
-    int x = dots(labelTemplate, element.xInches);
-    int y = dots(labelTemplate, element.yInches);
+    const int x = roundDot(resolved.contentBoundsDots.x);
+    const int y = roundDot(resolved.contentBoundsDots.y);
     zpl << "^FO" << x << "," << y << "\n";
     zpl << "^BQN," << element.qrModel << "," << element.qrMagnification << "\n";
-    zpl << "^FH\\^FDLA," << escapeFieldData(value) << "^FS\n";
+    zpl << "^FH\\^FDLA," << escapeFieldData(resolved.value) << "^FS\n";
     return zpl.str();
 }
 
-std::string ZplGenerator::shapeZpl(const LabelElement& element, const LabelTemplate& labelTemplate)
+std::string ZplGenerator::shapeZpl(const ResolvedLabelElement& resolved, const LabelTemplate& labelTemplate)
 {
+    const LabelElement& element = resolved.element;
     std::ostringstream zpl;
-    const int x = dots(labelTemplate, element.xInches);
-    const int y = dots(labelTemplate, element.yInches);
-    const int width = std::max(1, dots(labelTemplate, element.boxWidthInches));
-    const int height = element.type == LabelElementType::Line
+    int x = roundDot(resolved.contentBoundsDots.x);
+    int y = roundDot(resolved.contentBoundsDots.y);
+    int width = std::max(1, roundDot(resolved.contentBoundsDots.width));
+    int height = element.type == LabelElementType::Line
         ? std::max(1, element.fontWidthDots)
-        : std::max(1, element.fontHeightDots);
+        : std::max(1, roundDot(resolved.contentBoundsDots.height));
     const int thickness = element.type == LabelElementType::Line
         ? std::max(1, element.fontWidthDots)
         : std::max(1, std::min(element.fontWidthDots, std::min(width, height) / 2));
+
+    if (element.type == LabelElementType::Box)
+    {
+        const int inset = std::max(thickness, printableEdgeInsetDots(labelTemplate.settings.dpi));
+        const int labelWidth = labelTemplate.settings.labelWidthDots();
+        const int labelHeight = labelTemplate.settings.labelHeightDots();
+        const int right = std::min(x + width, labelWidth - inset);
+        const int bottom = std::min(y + height, labelHeight - inset);
+        x = std::max(x, inset);
+        y = std::max(y, inset);
+        width = std::max(1, right - x);
+        height = std::max(1, bottom - y);
+    }
 
     zpl << "^FO" << x << "," << y << "\n";
     zpl << "^GB" << width << "," << height << "," << thickness << "^FS\n";
@@ -276,25 +327,4 @@ char ZplGenerator::mediaCode(MediaSensingMode mode)
     case MediaSensingMode::Continuous: return 'N';
     default: return 'Y';
     }
-}
-
-int ZplGenerator::dots(const LabelTemplate& labelTemplate, double inches)
-{
-    return labelTemplate.settings.inchesToDots(inches);
-}
-
-int ZplGenerator::effectiveFontHeight(const LabelElement& element, const LabelTemplate& labelTemplate, const std::string& value)
-{
-    if (!element.autoFit || value.empty() || element.boxWidthInches <= 0)
-    {
-        return element.fontHeightDots;
-    }
-
-    int estimated = static_cast<int>(value.size()) * element.fontWidthDots;
-    int boxWidth = labelTemplate.settings.inchesToDots(element.boxWidthInches);
-    if (estimated <= boxWidth)
-    {
-        return element.fontHeightDots;
-    }
-    return std::max(8, element.fontHeightDots * boxWidth / std::max(1, estimated));
 }

@@ -29,6 +29,7 @@
 #include <QModelIndex>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QRectF>
 #include <QScrollArea>
 #include <QSettings>
 #include <QSignalBlocker>
@@ -55,6 +56,8 @@
 #include "core/AppVersion.h"
 #include "core/BarcodeMetrics.h"
 #include "core/CsvImporter.h"
+#include "core/LabelLayout.h"
+#include "core/LabelUnits.h"
 #include "core/SampleData.h"
 #include "core/TemplateStorage.h"
 #include "core/VariableResolver.h"
@@ -131,6 +134,66 @@ double minimumReadableTextWidthInches(const LabelTemplate& labelTemplate, const 
     sample = VariableResolver::resolveText(sample, VariableContext{});
     const std::size_t longestLine = std::max<std::size_t>(1, sample.size());
     return std::clamp((static_cast<double>(longestLine) * element.fontWidthDots * 0.58 + 12.0) / dpi, 0.18, labelTemplate.settings.labelWidthInches);
+}
+
+double printableTopInsetInches(const LabelTemplate& labelTemplate)
+{
+    return std::max(0.04, 6.0 / static_cast<double>(std::max(1, labelTemplate.settings.dpi)));
+}
+
+LabelElement clampElementToCanvas(const LabelTemplate& labelTemplate, LabelElement element)
+{
+    LabelTemplate single = labelTemplate;
+    single.elements = {element};
+    LabelResolveOptions options;
+    options.fillMissingSampleData = true;
+    const ResolvedLabelLayout layout = LabelLayoutEngine::resolve(single, {}, options);
+    if (layout.elements.empty())
+    {
+        return element;
+    }
+
+    const int dpi = std::max(1, labelTemplate.settings.dpi);
+    const LabelRect boundsDots = layout.elements.front().selectionBoundsDots;
+    QRectF bounds(
+        LabelUnits::dotsToInches(boundsDots.x, dpi),
+        LabelUnits::dotsToInches(boundsDots.y, dpi),
+        LabelUnits::dotsToInches(boundsDots.width, dpi),
+        LabelUnits::dotsToInches(boundsDots.height, dpi));
+
+    const double labelWidth = std::max(0.1, labelTemplate.settings.labelWidthInches);
+    const double labelHeight = std::max(0.1, labelTemplate.settings.labelHeightInches);
+    double dx = 0.0;
+    double dy = 0.0;
+    if (bounds.width() <= labelWidth)
+    {
+        if (bounds.left() < 0.0) dx = -bounds.left();
+        else if (bounds.right() > labelWidth) dx = labelWidth - bounds.right();
+    }
+    else
+    {
+        dx = -bounds.left();
+    }
+
+    if (bounds.height() <= labelHeight)
+    {
+        if (bounds.top() < 0.0) dy = -bounds.top();
+        else if (bounds.bottom() > labelHeight) dy = labelHeight - bounds.bottom();
+    }
+    else
+    {
+        dy = -bounds.top();
+    }
+
+    element.xInches = std::max(0.0, element.xInches + dx);
+    element.yInches = std::max(0.0, element.yInches + dy);
+    if (element.type == LabelElementType::Text ||
+        element.type == LabelElementType::Line ||
+        element.type == LabelElementType::Box)
+    {
+        element.boxWidthInches = std::min(element.boxWidthInches, std::max(0.01, labelWidth - element.xInches));
+    }
+    return element;
 }
 }
 
@@ -260,6 +323,7 @@ void MainWindow::buildUi()
                 updated.fontWidthDots = std::max(updated.fontWidthDots, static_cast<int>(std::round(updated.fontHeightDots * 0.78)));
                 updated.boxWidthInches = std::max(updated.boxWidthInches, minimumReadableTextWidthInches(labelTemplate_, updated));
             }
+            updated = clampElementToCanvas(labelTemplate_, updated);
             labelTemplate_.elements[selectedElement_] = updated;
             if (auto* item = elementList_->item(selectedElement_))
             {
@@ -279,8 +343,10 @@ void MainWindow::buildUi()
     connect(preview_, &PreviewWidget::elementMoved, this, [this](int index, double x, double y) {
         if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()))
         {
-            labelTemplate_.elements[index].xInches = x;
-            labelTemplate_.elements[index].yInches = y;
+            LabelElement updated = labelTemplate_.elements[index];
+            updated.xInches = x;
+            updated.yInches = y;
+            labelTemplate_.elements[index] = clampElementToCanvas(labelTemplate_, updated);
             selectElement(index);
             refreshPreview();
         }
@@ -297,7 +363,7 @@ void MainWindow::buildUi()
             const int index = indexes[i];
             if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()))
             {
-                labelTemplate_.elements[index] = elements[i];
+                labelTemplate_.elements[index] = clampElementToCanvas(labelTemplate_, elements[i]);
                 validIndexes.append(index);
             }
         }
@@ -307,7 +373,7 @@ void MainWindow::buildUi()
     connect(preview_, &PreviewWidget::elementChanged, this, [this](int index, const LabelElement& element) {
         if (index >= 0 && index < static_cast<int>(labelTemplate_.elements.size()))
         {
-            labelTemplate_.elements[index] = element;
+            labelTemplate_.elements[index] = clampElementToCanvas(labelTemplate_, element);
             selectElement(index);
             refreshPreview();
         }
@@ -322,10 +388,17 @@ void MainWindow::buildUi()
     {
         connect(spin, &QDoubleSpinBox::valueChanged, this, settingsChanged);
     }
-    connect(dpiCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
+    connect(dpiCombo_, &QComboBox::currentIndexChanged, this, [this] {
+        applyDpiToTemplate(dpiCombo_->currentData().toInt());
+        refreshPreview();
+    });
     connect(mediaCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
     connect(orientationCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
-    connect(printerCombo_, &QComboBox::currentIndexChanged, this, settingsChanged);
+    connect(printerCombo_, &QComboBox::currentIndexChanged, this, [this] {
+        updateTemplateFromSettings();
+        syncDpiFromSelectedPrinter();
+        refreshPreview();
+    });
     connect(stockPresetCombo_, &QComboBox::currentIndexChanged, this, &MainWindow::applyStockPreset);
 }
 
@@ -738,11 +811,14 @@ QWidget* MainWindow::buildDataTab()
     excelRecords_ = new ExcelRecordsWidget(tab);
     layout->addWidget(excelRecords_);
     connect(excelRecords_, &ExcelRecordsWidget::previewRowRequested, this, [this](int row) {
+        currentPreviewRow_ = std::max(0, row);
         preview_->setVariables(contextForRow(row));
     });
-    connect(excelRecords_, &ExcelRecordsWidget::recordsChanged, this, [this] {
+    connect(excelRecords_, &ExcelRecordsWidget::recordsLoaded, this, [this] {
+        currentPreviewRow_ = 0;
         csvMappingOverrides_.clear();
     });
+    connect(excelRecords_, &ExcelRecordsWidget::recordsChanged, this, &MainWindow::previewSelectedCsvRecord);
     connect(excelRecords_, &ExcelRecordsWidget::printSelectedRequested, this, &MainWindow::printSelectedCsvRows);
     return tab;
 }
@@ -1268,6 +1344,49 @@ void MainWindow::refreshPreview()
     updateStatusSummary();
 }
 
+void MainWindow::applyDpiToTemplate(int newDpi)
+{
+    newDpi = std::max(1, newDpi);
+    PrinterSettings& settings = labelTemplate_.settings;
+    settings.dpi = newDpi;
+    updateTemplateFromSettings();
+    statusBar()->showMessage(QString("DPI changed to %1. Canvas now uses that printer dot scale.").arg(newDpi), 7000);
+}
+
+void MainWindow::syncDpiFromSelectedPrinter(bool allowStatusMessage)
+{
+    if (!printerCombo_ || printerCombo_->currentText().isEmpty())
+    {
+        return;
+    }
+
+    std::string error;
+    const std::optional<int> detectedDpi = ZebraPrinter::printerDpi(printerCombo_->currentText().toStdString(), error);
+    if (!detectedDpi || (*detectedDpi != 203 && *detectedDpi != 300))
+    {
+        return;
+    }
+
+    if (*detectedDpi == labelTemplate_.settings.dpi)
+    {
+        return;
+    }
+
+    QSignalBlocker dpiBlocker(dpiCombo_);
+    int dpiIndex = dpiCombo_->findData(*detectedDpi);
+    if (dpiIndex < 0)
+    {
+        dpiCombo_->addItem(QString::number(*detectedDpi), *detectedDpi);
+        dpiIndex = dpiCombo_->findData(*detectedDpi);
+    }
+    dpiCombo_->setCurrentIndex(dpiIndex);
+    applyDpiToTemplate(*detectedDpi);
+    if (allowStatusMessage)
+    {
+        statusBar()->showMessage(QString("Matched label DPI to selected printer: %1 DPI.").arg(*detectedDpi), 8000);
+    }
+}
+
 void MainWindow::loadDefaultTemplate()
 {
     labelTemplate_ = TemplateStorage::load("templates/default_label.json");
@@ -1690,6 +1809,10 @@ void MainWindow::alignSelectedLeft()
     {
         LabelElement& element = labelTemplate_.elements[indexes.front()];
         element.xInches = 0.0;
+        if (element.type == LabelElementType::Text)
+        {
+            element.boxWidthInches = std::max(element.boxWidthInches, labelTemplate_.settings.labelWidthInches);
+        }
         if (element.type == LabelElementType::Text ||
             element.type == LabelElementType::Code128Barcode ||
             element.type == LabelElementType::Code39Barcode)
@@ -1707,6 +1830,13 @@ void MainWindow::alignSelectedLeft()
         for (int index : indexes)
         {
             labelTemplate_.elements[index].xInches = target;
+            LabelElement& element = labelTemplate_.elements[index];
+            if (element.type == LabelElementType::Text ||
+                element.type == LabelElementType::Code128Barcode ||
+                element.type == LabelElementType::Code39Barcode)
+            {
+                element.alignment = TextAlignment::Left;
+            }
         }
     }
     selectElements(QList<int>(indexes.begin(), indexes.end()));
@@ -1722,7 +1852,9 @@ void MainWindow::alignSelectedCenter()
     if (indexes.size() == 1)
     {
         LabelElement& element = labelTemplate_.elements[indexes.front()];
-        if (element.type == LabelElementType::Code128Barcode || element.type == LabelElementType::Code39Barcode)
+        if (element.type == LabelElementType::Text ||
+            element.type == LabelElementType::Code128Barcode ||
+            element.type == LabelElementType::Code39Barcode)
         {
             element.xInches = 0.0;
             element.boxWidthInches = labelTemplate_.settings.labelWidthInches;
@@ -1752,7 +1884,14 @@ void MainWindow::alignSelectedCenter()
         for (int index : indexes)
         {
             const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
-            labelTemplate_.elements[index].xInches = std::max(0.0, center - size.width() / 2.0);
+            LabelElement& element = labelTemplate_.elements[index];
+            element.xInches = std::max(0.0, center - size.width() / 2.0);
+            if (element.type == LabelElementType::Text ||
+                element.type == LabelElementType::Code128Barcode ||
+                element.type == LabelElementType::Code39Barcode)
+            {
+                element.alignment = TextAlignment::Center;
+            }
         }
     }
     selectElements(QList<int>(indexes.begin(), indexes.end()));
@@ -1768,7 +1907,9 @@ void MainWindow::alignSelectedRight()
     if (indexes.size() == 1)
     {
         LabelElement& element = labelTemplate_.elements[indexes.front()];
-        if (element.type == LabelElementType::Code128Barcode || element.type == LabelElementType::Code39Barcode)
+        if (element.type == LabelElementType::Text ||
+            element.type == LabelElementType::Code128Barcode ||
+            element.type == LabelElementType::Code39Barcode)
         {
             element.xInches = 0.0;
             element.boxWidthInches = labelTemplate_.settings.labelWidthInches;
@@ -1795,7 +1936,14 @@ void MainWindow::alignSelectedRight()
         for (int index : indexes)
         {
             const QSizeF size = estimatedElementSizeInches(labelTemplate_, labelTemplate_.elements[index]);
-            labelTemplate_.elements[index].xInches = std::max(0.0, target - size.width());
+            LabelElement& element = labelTemplate_.elements[index];
+            element.xInches = std::max(0.0, target - size.width());
+            if (element.type == LabelElementType::Text ||
+                element.type == LabelElementType::Code128Barcode ||
+                element.type == LabelElementType::Code39Barcode)
+            {
+                element.alignment = TextAlignment::Right;
+            }
         }
     }
     selectElements(QList<int>(indexes.begin(), indexes.end()));
@@ -1808,7 +1956,7 @@ void MainWindow::alignSelectedTop()
     const std::vector<int> indexes = selectedEditableIndexes();
     if (indexes.empty()) { statusBar()->showMessage("Select unlocked elements before aligning."); return; }
     saveUndoState();
-    double target = 0.0;
+    double target = printableTopInsetInches(labelTemplate_);
     if (indexes.size() > 1)
     {
         target = labelTemplate_.elements[indexes.front()].yInches;
@@ -1816,6 +1964,7 @@ void MainWindow::alignSelectedTop()
         {
             target = std::min(target, labelTemplate_.elements[index].yInches);
         }
+        target = std::max(target, printableTopInsetInches(labelTemplate_));
     }
     for (int index : indexes)
     {
@@ -2079,12 +2228,22 @@ void MainWindow::configureCsvMapping()
 
 void MainWindow::previewSelectedCsvRecord()
 {
-    if (!excelRecords_ || excelRecords_->records().records.empty())
+    if (!excelRecords_)
     {
         preview_->setVariables({});
         return;
     }
-    preview_->setVariables(contextForRow(0));
+
+    const ExcelRecordSet records = excelRecords_->records();
+    if (records.records.empty())
+    {
+        currentPreviewRow_ = 0;
+        preview_->setVariables({});
+        return;
+    }
+
+    currentPreviewRow_ = std::clamp(currentPreviewRow_, 0, static_cast<int>(records.records.size()) - 1);
+    preview_->setVariables(contextForRow(currentPreviewRow_));
 }
 
 void MainWindow::previewZpl()
@@ -2105,7 +2264,7 @@ void MainWindow::previewZpl()
     dialog->resize(720, 520);
     auto* layout = new QVBoxLayout(dialog);
     auto* text = new QTextEdit(dialog);
-    text->setPlainText(QString::fromStdString(ZplGenerator::generate(labelTemplate_, context)));
+    text->setPlainText(QString::fromStdString(ZplGenerator::generateDebugReport(labelTemplate_, context)));
     text->setReadOnly(true);
     layout->addWidget(text);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
@@ -2472,6 +2631,9 @@ bool MainWindow::printContexts(const std::vector<VariableContext>& contexts, int
         QMessageBox::warning(this, "Printer Required", "Select a Windows printer first.");
         return false;
     }
+
+    syncDpiFromSelectedPrinter();
+    refreshPreview();
 
     std::string printer = printerCombo_->currentText().toStdString();
     std::string error;

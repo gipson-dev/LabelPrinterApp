@@ -3,6 +3,8 @@
 #include <windows.h>
 #include <winspool.h>
 
+#include <algorithm>
+#include <cstdlib>
 #include <vector>
 
 namespace
@@ -41,6 +43,44 @@ std::vector<std::string> ZebraPrinter::installedPrinters(std::string& errorMessa
         }
     }
     return printers;
+}
+
+std::optional<int> ZebraPrinter::printerDpi(const std::string& printerName, std::string& errorMessage)
+{
+    errorMessage.clear();
+    if (printerName.empty())
+    {
+        errorMessage = "Printer name is empty.";
+        return std::nullopt;
+    }
+
+    HDC dc = CreateDCA("WINSPOOL", printerName.c_str(), nullptr, nullptr);
+    if (!dc)
+    {
+        errorMessage = windowsError("Failed to read printer DPI.");
+        return std::nullopt;
+    }
+
+    const int dpiX = GetDeviceCaps(dc, LOGPIXELSX);
+    const int dpiY = GetDeviceCaps(dc, LOGPIXELSY);
+    DeleteDC(dc);
+
+    const int dpi = dpiX > 0 ? dpiX : dpiY;
+    if (dpi <= 0)
+    {
+        errorMessage = "Printer driver did not report a valid DPI.";
+        return std::nullopt;
+    }
+
+    if (std::abs(dpi - 203) <= 20)
+    {
+        return 203;
+    }
+    if (std::abs(dpi - 300) <= 30)
+    {
+        return 300;
+    }
+    return std::clamp(dpi, 100, 1200);
 }
 
 bool ZebraPrinter::printRawZpl(const std::string& printerName, const std::string& zpl, std::string& errorMessage)

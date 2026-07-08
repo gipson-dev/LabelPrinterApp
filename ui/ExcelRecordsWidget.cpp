@@ -205,6 +205,7 @@ void ExcelRecordsWidget::loadFile()
     titleLabel_->setText(records.sheetName.isEmpty() ? QFileInfo(path).fileName() : records.sheetName);
     rebuildColumnChoices();
     updateStatus();
+    emit recordsLoaded();
     emit recordsChanged();
     if (model_->rowCount() > 0)
     {

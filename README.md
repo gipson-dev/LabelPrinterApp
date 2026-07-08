@@ -2,27 +2,27 @@
 
 LabelPrinterApp is a Windows desktop app for making and printing Zebra ZPL labels. It is built for small 2.25 x 0.75 inch direct thermal removable adhesive labels, especially on Zebra ZD410-style printers.
 
-The app lets you design a label, preview it, fill in values, import a CSV file, and send raw ZPL directly to a Windows printer.
+The app lets you design a label, preview it, fill in values, import CSV or Excel data, and send raw ZPL directly to a Windows printer.
 
 ## What You Can Do
 
 - Design 2.25 x 0.75 inch Zebra labels for 203 DPI or 300 DPI printers.
 - Add text, Code 128 barcodes, Code 39 barcodes, and QR codes.
 - Add Line and Box elements for dividers and outlines.
-- Move label items by dragging them in the preview.
+- Move label items by dragging them in the preview while keeping elements inside the label canvas.
 - Resize selected label items from the side and corner anchors on the design canvas.
 - Drag an empty canvas area to select multiple elements, then align, distribute, lock, or drag the group.
 - Double-click text elements to edit their text directly on the canvas.
 - Use Cut, Copy, Paste, Undo, Redo, Zoom In/Out/Fit, and Help from the classic toolbar/menu.
 - See the current app version in the main window title and About dialog.
 - Check for and self-apply app updates: `Help > Check for Updates` (and a quiet check a few seconds after startup) looks for a newer GitHub release, downloads and verifies it in the background, and offers to restart into it.
-- Preview and print text with sizing and vertical centering that more closely match the selected text box.
+- Preview and print text with shared dot-based layout so canvas text size, alignment, and printed Zebra output stay closer to WYSIWYG.
 - Show or hide the design grid and enable snap-to-grid placement from the toolbar.
 - Use `Quick Print` from the Element Property Editor to print without leaving the Design tab.
 - Work in focused tabs for Design, Elements, Data, Print, Templates, and Settings.
 - Edit font size from a preset dropdown above 72 dots, plus bold, italic, underline, rotation, alignment, wrapping, margins, gap, darkness, speed, and copies.
 - Use placeholders like `{Number}`, `{Description}`, `{Date}`, `{Time}`, `{Serial}`, and `{RecordIndex}`.
-- Print one label, a serial-number range, selected CSV rows, or every CSV row.
+- Print one label, a serial-number range, selected Excel/CSV rows, or every imported row.
 - Use CSV fields named `Number` and `Description` for the standard imported label data.
 - Log successful and failed print jobs to `logs\print_history.csv`, and review them in-app from `View > Print History`.
 - Save and load label templates as JSON.
@@ -61,10 +61,10 @@ Use the Design tab for most work:
    - QR size changes QR magnification.
    - Line and Box resizing changes shape width and height.
 
-Text is vertically centered inside its selected text box in the designer preview, and generated ZPL applies matching Zebra text sizing/origin corrections for normal orientation printing.
+Text is resolved through the same dot-based layout path for the designer preview and generated ZPL. The preview scales visible glyph width and height from the Zebra font dimensions, and generated ZPL emits explicit line positions so imported data, wrapping, and alignment stay closer to the printed label.
 Barcode selection bounds use the same Code 128 module-count sizing used by Zebra output. When a barcode is aligned center or right, the app recenters the actual value being printed inside the alignment lane, so imported values with different lengths stay aligned.
 Double-click a text element to edit it in place; press Enter or click away to save the edit, or press Escape to cancel.
-Drag across empty canvas space to marquee-select multiple elements. Ctrl-click toggles individual elements in or out of the current selection. Alignment, equal spacing, lock/unlock, and drag movement apply to the selected group.
+Drag across empty canvas space to marquee-select multiple elements. Ctrl-click toggles individual elements in or out of the current selection. Alignment, equal spacing, lock/unlock, and drag movement apply to the selected group. Dragging and resizing are clamped to the label canvas to avoid accidentally placing printable content off-label.
 
 For imported records, the normal field names are:
 
@@ -122,6 +122,8 @@ The Data tab is an editable records screen for `.xlsx` and `.csv` files. It incl
 - A range box such as `1-*`, `1-10`, `5`, `2,4,6`, or `1-5,8,10-12`
 
 Checked rows that match the range are printed through the current label template. The `Print Selected Records` button also honors highlighted table rows, so you can print by checking the `Print` column, selecting rows in the table, or both. Imported headers become template variables, so a CSV column named `Number` can be used as `{Number}` in text, barcode, or QR fields.
+
+Selecting or previewing an imported row updates the design canvas variables before ZPL is generated, so the preview, ZPL preview, and printed label use the same active record.
 
 CSV/Excel printing requires at least one printable label element. If the current canvas is a blank template, add a `Number`, `Description`, barcode, or QR field first, or load a template that contains fields such as `{Number}` and `{Description}`.
 
@@ -211,6 +213,8 @@ Build a distributable folder:
 ```
 
 The package is written to `dist\LabelPrinterApp`, including `LabelPrinterApp.exe` and the small `LabelPrinterAppLauncher.exe` update-apply helper. If `windeployqt.exe` is available, the Qt runtime files are copied automatically. The script also copies built dependency runtime DLLs such as `zlib-ng2.dll`, the exact OpenSSL `libssl`/`libcrypto` runtime DLLs imported by `LabelPrinterApp.exe`, plus OpenSSL 3 and 4 compatibility DLL pairs when available.
+
+By default, the packaging script bumps the patch version in `CMakeLists.txt` before building so the app title, About dialog, and updater version match the new package. If you are only retrying the same package after a transient file lock, run `.\scripts\package-release.ps1 -Config Release -NoVersionBump`.
 
 The package script also creates beta distribution artifacts:
 

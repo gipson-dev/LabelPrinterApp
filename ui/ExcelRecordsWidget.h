@@ -26,6 +26,7 @@ public:
     int copiesForSourceRow(int sourceRow) const;
 
 signals:
+    void recordsLoaded();
     void recordsChanged();
     void previewRowRequested(int sourceRow);
     void printSelectedRequested();

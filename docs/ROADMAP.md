@@ -4,7 +4,7 @@
 
 Build a Windows desktop label-design and Zebra-printing application for custom text, number, barcode, QR, line, box, and batch labels. The application supports editable templates, Excel/CSV data import, print preview, Zebra ZPL output, printer settings, print history, developer-friendly local setup, and release packaging.
 
-The current application covers the requested Version 1 through Version 5 feature set and includes the classic desktop designer UI pass. `v1.0.5` is the current patch release line, and the app can check for and apply newer GitHub releases on its own. Clean-machine and physical-printer QA hardening from the beta phase continues in parallel; see [Known Remaining Work](#known-remaining-work) and [docs/KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+The current application covers the requested Version 1 through Version 5 feature set and includes the classic desktop designer UI pass. `v1.0.8` is the current patch release line, and the app can check for and apply newer GitHub releases on its own. Clean-machine and physical-printer QA hardening from the beta phase continues in parallel; see [Known Remaining Work](#known-remaining-work) and [docs/KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Release Status Overview
 
@@ -32,7 +32,7 @@ The current application covers the requested Version 1 through Version 5 feature
 | 6 | Main UI wiring | Complete | Qt `MainWindow`, menus, dense toolbar, left toolbox, center preview, right property editor, bottom alignment toolbar, settings, help, template commands, and Data tab are wired. |
 | 7 | Editable label fields | Complete | Users can add, edit, delete, duplicate, move, resize, lock, unlock, mark do-not-print, and edit text directly on the canvas. |
 | 8 | Barcode and QR support | Complete | Code 128, Code 39, QR code, barcode height, module width, human-readable toggle, Zebra-width preview sizing, value-aware barcode centering, and ZPL output are implemented. |
-| 9 | Preview and canvas system | Complete | Scaled preview with label boundary, printable margin, rulers, grid, snap, selection handles, cursor position, vertically centered text, text/barcode/QR/shape rendering, drag-to-move, resize handles, and locked-element drag blocking. |
+| 9 | Preview and canvas system | Complete | Scaled preview with label boundary, printable margin, rulers, grid, snap, selection handles, cursor position, Zebra-scaled text, text/barcode/QR/shape rendering, drag-to-move, resize handles, canvas bounds clamping, and locked-element drag blocking. |
 | 10 | Template manager | Complete | Template tab loads bundled JSON templates and supports saving/loading user templates. |
 | 11 | Printer and stock settings | Complete | Installed-printer selector, refresh, DPI, dimensions, margins, gap, sensing mode, orientation, speed, darkness, copies, and stock presets. |
 | 12 | Error handling and status feedback | Complete for foundation | Save errors, print errors, missing-printer validation, template fallback handling, status-bar messages, and basic success/failure reporting. |
@@ -59,7 +59,7 @@ The current application covers the requested Version 1 through Version 5 feature
 - Multi-element selection with drag-marquee selection, Ctrl-click selection toggles, group dragging, and group-aware align/distribute/lock commands.
 - New Text, Number, and Serial # elements default to regular font weight; Bold is opt-in from the Formatting page.
 - Cut, copy, paste, undo, redo, zoom in, zoom out, zoom fit, and help.
-- Vertically centered preview text plus corrected Zebra text-origin output.
+- Shared preview/ZPL layout with Zebra-scaled preview text, explicit ZPL text line output, and safe shape/border insets.
 - Stock presets for Uline S-8599, Uline S-22422, Zebra 2.25 x 0.75 generic, and Zebra ZD620 4 x 2.
 - Bundled blank templates for both 2.25 x 0.75 and 4 x 2 label stock.
 - Persistent app settings for the selected printer, stock, DPI, label setup, print options, active tab, and window layout.
@@ -68,7 +68,7 @@ The current application covers the requested Version 1 through Version 5 feature
 - VS Code C/C++ IntelliSense include paths for fetched `nlohmann/json.hpp` in the local build folders.
 - Self-updating releases: a startup check plus `Help > Check for Updates` download and verify newer GitHub releases in the background and relaunch through `LabelPrinterAppLauncher.exe` to apply them, keeping `templates\` and `logs\` intact.
 - App version shown in the main window title and About dialog.
-- `v1.0.5` prepared as the current missing dependency runtime DLL hotfix release.
+- `v1.0.8` prepared as the current preview/print WYSIWYG, canvas bounds, and package version bump release.
 - In-app Print History viewer from `View > Print History`, reading `logs\print_history.csv` into a refreshable, most-recent-first table with color-coded success/failure.
 
 ## Immediate Next Order
@@ -114,7 +114,7 @@ Goal: first stable release.
 
 Status: tagged and published as `v1.0.0`, including self-updating release delivery. Clean-machine install, physical printer calibration, and barcode/QR scan validation from the list below are still being hardened; see [Known Remaining Work](#known-remaining-work).
 
-Patch line: `v1.0.4` adds in-app version display plus preview/print text sizing and visible-box Align middle corrections. `v1.0.5` fixes packaging for built dependency runtime DLLs such as `zlib-ng2.dll`.
+Patch line: `v1.0.4` adds in-app version display plus preview/print text sizing and visible-box Align middle corrections. `v1.0.5` fixes packaging for built dependency runtime DLLs such as `zlib-ng2.dll`. `v1.0.8` adds the shared preview/ZPL layout path, Zebra-scaled preview text, printer DPI sync, imported-record preview fixes, canvas bounds clamping, safe border insets, and automatic packaging version bumps.
 
 Must include:
 

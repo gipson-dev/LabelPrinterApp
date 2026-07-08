@@ -38,11 +38,11 @@ The toolbar and menus include common editor commands:
 
 The standard data fields are `Number` and `Description`.
 The Date/Time tool inserts `{DateTime}`, which resolves automatically when previewing or printing.
-The main window title shows the running app version, such as `LabelPrinterApp v1.0.5`.
-Text is vertically centered in its selected box on the canvas, and normal text printing uses corrected sizing and origin output so the printed label stays close to the designer preview.
+The main window title shows the running app version, such as `LabelPrinterApp v1.0.8`.
+Text uses shared dot-based preview/print layout. The canvas preview scales visible text from the same Zebra font width and height sent to the printer, so printed labels stay closer to the designer preview.
 Barcode selection boxes use Zebra-width sizing for Code 128. Use Align center or Align right on a selected barcode to create an alignment lane; imported values with different lengths are then centered or right-aligned when the ZPL is generated.
 For in-place text edits, press Enter or click away to save, or press Escape to cancel.
-For multi-selection, drag a marquee around elements or Ctrl-click individual elements. Group align commands use the selected group's left, center, right, top, middle, or bottom edge. Single-element Align middle uses the visible selected box, so the dashed selection frame is centered on the label canvas.
+For multi-selection, drag a marquee around elements or Ctrl-click individual elements. Group align commands use the selected group's left, center, right, top, middle, or bottom edge. Single-element Align middle uses the visible selected box, so the dashed selection frame is centered on the label canvas. Dragging and resizing are clamped to the canvas so elements cannot be pushed off the printable label area.
 
 ## Resize Elements
 
@@ -81,6 +81,8 @@ To print imported records:
 
 The app also supports `.xlsx` files through the same Data tab table.
 
+Selecting a loaded row updates the preview values on the canvas. The same active row is used for Preview ZPL and printing, so imported data should match what you see before printing.
+
 ## Manual User Input
 
 If no CSV or Excel row is active, variable fields still work. When printing, the app prompts for values such as `Number` and `Description`.
@@ -109,7 +111,8 @@ If the app warns that the template is blank, add at least one printable text, ba
 2. Confirm the label stops at the right gap.
 3. Confirm barcode text scans or reads correctly.
 4. Adjust darkness and speed if print quality is too light, heavy, or blurry.
-5. Print the full selected batch only after the test label is correct.
+5. If a text box or border is close to the label edge, print one test label and adjust before batching.
+6. Print the full selected batch only after the test label is correct.
 
 Print results are logged to `logs\print_history.csv`. Open `View > Print History` to review them without leaving the app; see [Print History](#print-history) below.
 
