@@ -27,7 +27,7 @@ jobs:
       - name: Package release
         shell: pwsh
         run: |
-          .\scripts\package-release.ps1 -Config Release
+          .\scripts\package-release.ps1 -Config Release -NoVersionBump
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

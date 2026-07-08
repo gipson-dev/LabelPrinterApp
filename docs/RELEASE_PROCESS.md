@@ -32,6 +32,8 @@ Before tagging a release:
 
 The package script bumps the patch version in `CMakeLists.txt` before building. If you are retrying the same package because a previous run hit a transient file lock, use `.\scripts\package-release.ps1 -Config Release -NoVersionBump`.
 
+The GitHub Actions release workflow runs the package script with `-NoVersionBump` because the release tag must match the committed project version exactly. Bump locally, commit the updated version, then push the matching `v*` tag.
+
 4. Confirm `dist\LabelPrinterApp` and `dist\LabelPrinterApp_Portable.zip` include required dependency DLLs such as `zlib-ng2.dll`, plus matching `libssl*.dll` and `libcrypto*.dll` files beside `LabelPrinterApp.exe`.
 5. Open `dist\LabelPrinterApp\LabelPrinterApp.exe`.
 6. Run the manual checks in `docs\MANUAL_QA_CHECKLIST.md`, including the `Check for Updates` flow against the currently-latest published GitHub release.
